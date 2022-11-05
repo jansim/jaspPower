@@ -587,26 +587,26 @@ test1VarClass <- R6::R6Class(
 
 
       df <- n - 1
-      ncp <- n * (d-1)^2
+      ncp <- n * (d-1)
 
       if (alt == "two.sided") {
-        crit <- qchisq(1 - alpha / 2, df = df)
+        crit <- qchisq(1 - alpha / 2, df = df) / n
       } else {
-        crit <- qchisq(p = 1 - alpha, df = df)
+        crit <- qchisq(p = 1 - alpha, df = df) / n
       }
 
 
       if (lst$es > 1) {
-        xlims <- c(qchisq(.001, df), qchisq(.999, df, ncp))
+        xlims <- c(qchisq(.001, df), qchisq(.999, df, ncp)) / n
       } else {
-        xlims <- c(qchisq(.001, df, ncp), qchisq(.999, df))
+        xlims <- c(qchisq(.001, df, ncp), qchisq(.999, df)) / n
       }
 
-      y.max <- dchisq(df - 2, df)
+      y.max <- dchisq(df - 2, df) * n
 
       xx <- seq(xlims[1], xlims[2], len = 100)
-      yy.null <- dchisq(xx, df)
-      yy.alt <- dchisq(xx, df, ncp)
+      yy.null <- dchisq(xx * n, df) * n
+      yy.alt <- dchisq(xx * n, df, ncp) * n
 
       curves <- data.frame(
         x = rep(xx, 2),

@@ -38,6 +38,7 @@ test_that("Results for Power Analysis for One Sample Z-Test match", {
 test_that("Results for Power Analysis for One Proportion Test match", {
   options <- jaspTools::analysisOptions("Power")
   options$test <- "test_oneprop"
+  options$esType <- "h"
 
   results <- jaspTools::runAnalysis("Power", NULL, options)
   table <- results[["results"]][["powertab"]][["data"]]
@@ -47,6 +48,7 @@ test_that("Results for Power Analysis for One Proportion Test match", {
 test_that("Results for Power Analysis for Two Proportions Test match", {
   options <- jaspTools::analysisOptions("Power")
   options$test <- "test_twoprop"
+  options$esType <- "h"
 
   results <- jaspTools::runAnalysis("Power", NULL, options)
   table <- results[["results"]][["powertab"]][["data"]]

@@ -587,7 +587,7 @@ test2VarClass <- R6::R6Class(
         crit <- qf(p = 1 - alpha, df1 = df1, df2 = df2)
       }
 
-      if (lst$es > 0) {
+      if (d > 1) {
         xlims <- c(qf(.001, df1 = df1, df2 = df2), qf(.999, df1 = df1, df2 = df2, ncp = ncp))
       } else {
         xlims <- c(qf(.001, df1 = df1, df2 = df2, ncp = ncp), qf(.999, df1 = df1, df2 = df2))

@@ -1,7 +1,7 @@
 # Originally based on https://github.com/richarddmorey/jpower
 
-test1PClass <- R6::R6Class(
-  "test1PClass",
+test1PoisClass <- R6::R6Class(
+  "test1PoisClass",
   inherit = tTestBaseClass,
   private = list(
     #### Member variables ----
@@ -10,21 +10,21 @@ test1PClass <- R6::R6Class(
     #### Compute results ----
     .compute = function(stats) {
       ## Compute numbers for table
-      pow.n <- ceiling(pwr.p.test(p0 = stats$p0, p = stats$p1, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
-      pow.p <- pwr.p.test(n = stats$n, p0 = stats$p0, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$p
-      pow.pow <- pwr.p.test(n = stats$n, p0 = stats$p0, p = stats$p1, sig.level = stats$alpha, alternative = stats$alt)$power
+      pow.n <- ceiling(pwr.pois.test(t = stats$t1, lambda0 = stats$p0, lambda1 = stats$p1, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
+      pow.lambda1 <- pwr.pois.test(t = stats$t1, n = stats$n, lambda0 = stats$p0, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$lambda1
+      pow.pow <- pwr.pois.test(t = stats$t1, n = stats$n, lambda0 = stats$p0, lambda1 = stats$p1, sig.level = stats$alpha, alternative = stats$alt)$power
 
       # Calculate probs_es here to have access to stats list
       probs <- c(.5, .8, .95)
       probs_es <- sapply(probs, function(pr) {
-        pwr.p.test(
-          n = stats$n, p0 = stats$p0, sig.level = stats$alpha, power = pr,
+        pwr.pois.test(t = stats$t1,
+          n = stats$n, lambda0 = stats$p0, sig.level = stats$alpha, power = pr,
           alternative = stats$alt
-        )$p
+        )$lambda1
       })
       private$probs_es <- probs_es
 
-      return(list(n = pow.n, p = pow.p, power = pow.pow))
+      return(list(n = pow.n, lambda1 = pow.lambda1, power = pow.pow))
     },
 
     #### Init table ----
@@ -54,40 +54,36 @@ test1PClass <- R6::R6Class(
       calc <- self$options$calc
 
       if (calc == "n") {
-        order <- c(1, 2, 3, 4, 5, 6)
+        order <- c(1, 2, 3, 4, 5, 6, 7)
       } else if (calc == "es") {
-        order <- c(3, 4, 1, 2, 5, 6)
+        order <- c(4, 5, 1, 2, 3, 6, 7)
       } else if (calc == "power") {
-        order <- c(5, 1, 2, 3, 4, 6)
+        order <- c(6, 1, 2, 3, 4, 5, 7)
       } else {
-        order <- c(6, 1, 2, 3, 4, 5)
+        order <- c(7, 1, 2, 3, 4, 5, 6)
       }
 
-      colNames <- c("n", "p0", "p1","es", "power", "alpha")
+      colNames <- c("n", "t", "p0", "p1","es", "power", "alpha")
       colLabels <- c(
         "N",
-        gettext("Hypothesized proportion"),
-        gettext("Comparison proportion"),
-        gettext("Cohen's <i>h</i>"),
+        "t",
+        gettext("Hypothesized rate (\u03BB\u2080)"),
+        gettext("Comparison rate (\u03BB\u2081)"),
+        gettext("Effect size ((\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081)"),
         gettext("Power"),
         "\u03B1"
       )
-      colType <- c("integer", "number", "number", "number", "number", "number")
+      colType <- c("integer", "number", "number", "number", "number", "number", "number")
 
       for (i in seq_along(order)) {
-        if((calc == "es" && i > 2) || (calc != "es" && i > 1)) {
-          overtitle <- gettext("User Defined")
-        } else {
-          overtitle <- NULL
-        }
         table$addColumnInfo(colNames[order[i]],
                             title = colLabels[order[i]],
-                            overtitle = overtitle,
+                            overtitle = ifelse((calc == "es" && i > 2) || (calc != "es" && i > 1), gettext("User Defined"), NULL),
                             type = colType[order[i]]
         )
       }
 
-      self$options$es <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(self$options$p1)) - asin(sqrt(self$options$p0))), abs(p1 - p0))
+      self$options$es <- (self$options$p1 - self$options$p0) / sqrt(self$options$p1)
 
 
       row <- list()
@@ -132,7 +128,7 @@ test1PClass <- R6::R6Class(
 
       table$addColumnInfo(
         name = "es",
-        title = ifelse(self$options$esType == "h", gettext("True effect size (Cohen's <i>h</i>)"), gettext("True difference in proportions (p\u2080 - p\u2081")),
+        title = gettext("True effect size ((\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081)"),
         type = "string"
       )
       table$addColumnInfo(
@@ -175,9 +171,10 @@ test1PClass <- R6::R6Class(
       ## Get options from interface
       calc <- self$options$calc
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
@@ -188,40 +185,38 @@ test1PClass <- R6::R6Class(
                           gettext("two-sided"),
                           gettext("one-sided")
       )
-      dType_text <- ifelse(self$options$esType == "h",
-                           gettext("effect sizes of <i>h</i>"),
-                           gettext("absolute differences in proportions of p\u2080 - p\u2081"))
+      d_text <- gettext("effect sizes of <i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081</i>")
 
       if (calc == "n") {
         str <- gettextf(
           "We would need %s to reliably (with probability greater than %s) detect %s<i>%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, power, dType_text, "\u2265", d, tail_text, alpha
+          n_text, power, d_text, "\u2265", d, tail_text, alpha
         )
       } else if (calc == "es") {
         str <- gettextf(
           "A design with %s will reliably (with probability greater than %s) detect  %s<i>%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, power, dType_text, "\u2265", round(d, 3), tail_text, alpha
+          n_text, power, d_text, "\u2265", round(d, 3), tail_text, alpha
         )
       } else if (calc == "power") {
         str <- gettextf(
           "A design with %s can detect %s<i>%s</i>%s with a probability of at least %s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, dType_text, "\u2265", d, round(power, 3), tail_text, alpha
+          n_text, d_text, "\u2265", d, round(power, 3), tail_text, alpha
         )
       }
 
       hypo_text <- ifelse(alt == "two.sided",
-                          "<i>|\u03B4|>0</i>",
-                          "<i>\u03B4>0</i>"
-      )
-      dType_text <- ifelse(self$options$esType == "h",
-                           gettext("effects"),
-                           gettext("absolute differences in proportions"))
+                          "<i>|(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081|>0</i>",
+                          ifelse(alt == "less",
+                                 "<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081<0</i>",
+                                 "<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081>0</i>"
+                                 )
+                          )
 
       str <- paste0(
         str,
         gettextf(
-          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true %s of increasing sizes; that is, are we likely to correctly conclude that %s when the effect size is large enough to care about?",
-          dType_text, hypo_text
+          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true effects of increasing sizes; that is, are we likely to correctly conclude that %s when the effect size is large enough to care about?",
+          hypo_text
         )
       )
 
@@ -245,8 +240,8 @@ test1PClass <- R6::R6Class(
                            gettext("absolute difference in proportions"))
 
       str <- gettextf(
-        "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical %s and the sample sizes in the design. As we increase the sample sizes, smaller effect sizes become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only larger effect sizes, smaller sample sizes are needed. The solid black curve on the contour plot shows sample size/%s combinations with a power of %s. The point shows the specified  design and %s.",
-        dType_text, dType_text, round(power, 3), dType_text
+        "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical effect size and the sample sizes in the design. As we increase the sample sizes, smaller effect sizes become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only larger effect sizes, smaller sample sizes are needed. The solid black curve on the contour plot shows sample size/effect size combinations with a power of %s. The point shows the specified  design and %s.",
+        round(power, 3), dType_text
       )
 
       html[["text"]] <- str
@@ -263,9 +258,10 @@ test1PClass <- R6::R6Class(
       ## Get options from interface
       calc <- self$options$calc
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       d <- round(d, 3)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
@@ -277,20 +273,20 @@ test1PClass <- R6::R6Class(
                            gettext("effect sizes"),
                            gettext("absolute differences in proportions"))
       dType_symbol <- ifelse(self$options$esType == "h",
-                           gettext("h"),
-                           gettext("\u0394p"))
+                             gettext("h"),
+                             gettext("\u0394p"))
 
 
 
       if (alt == "two.sided") {
         tail_text <- gettext("two-sided")
-        null_text <- gettextf("<i>%s\u2264</i>0,", dType_symbol)
-        alt_text <- gettextf("<i>|%s|\u003E</i>", dType_symbol)
+        null_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081\u2264</i>0,")
+        alt_text <- gettext("<i>|(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081|\u003E</i>")
         crit_text <- "criteria"
       } else {
         tail_text <- gettext("one-sided")
-        null_text <- gettextf("<i>%s=</i>0,", dType_symbol)
-        alt_text <- gettextf("<i>%s\u003E</i>", dType_symbol)
+        null_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081=</i>0,")
+        alt_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081\u003E</i>")
         crit_text <- "criterion"
       }
 
@@ -300,12 +296,12 @@ test1PClass <- R6::R6Class(
         pwr_string <- gettextf("only be sufficiently sensitive (power >%s)", round(power, 3))
       }
 
-      p50 <- pwr.p.test(n = n, p0 = p0, sig.level = alpha, power = .5, alternative = alt)$p
-      d50 <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p50)) - asin(sqrt(p0))), abs(p50 - p0))
+      l50 <- pwr.pois.test(t = t, n = n, lambda0 = p0, sig.level = alpha, power = .5, alternative = alt)$lambda1
+      d50 <- (l50 - lambda0) / sqrt(l50)
 
       str <- gettextf(
-        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger %s. If we obtained %s our test and design would %s to %s of %s%s. <p>We would be more than likely to miss (power less than 50%%) %s less than <i>%s=</i>%s.",
-        dType_text, n_text, pwr_string, dType_text, alt_text, d,dType_text, dType_symbol, round(d50, 3)
+        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger effect sizes. If we obtained %s our test and design would %s to effect sizes of %s%s. <p>We would be more than likely to miss (power less than 50%%) effect sizes less than <i>%s=</i>%s.",
+        n_text, pwr_string, alt_text, d, "(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081", round(d50, 3)
       )
 
       html[["text"]] <- str
@@ -322,39 +318,33 @@ test1PClass <- R6::R6Class(
       ## Get options from interface
       calc <- self$options$calc
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       d <- round(d, 3)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alt <- lst$alt
 
       n_text <- gettextf("sample sizes of at least %s", n)
 
-      dType_text <- ifelse(self$options$esType == "h",
-                           gettext("effect sizes"),
-                           gettext("absolute differences in proportions"))
-
-      dType_text_2 <- ifelse(self$options$esType == "h",
-                           gettext("effect size"),
-                           gettext("absolute difference in proportions"))
 
 
       if (alt == "two.sided") {
-        tail_text <- "two-sided"
-        null_text <- "<i>\u03B4\u2264</i>0,"
-        alt_text <- "<i>|\u03B4|\u003E</i>0,"
-        crit_text <- "criteria"
+        tail_text <- gettext("two-sided")
+        null_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081\u2264</i>0,")
+        alt_text <- gettext("<i>|(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081|\u003E</i>0,")
+        crit_text <- gettext("criteria")
       } else {
-        tail_text <- "one-sided"
-        null_text <- "<i>\u03B4=</i>0,"
-        alt_text <- "<i>\u03B4\u2260</i>0,"
-        crit_text <- "criterion"
+        tail_text <- gettext("one-sided")
+        null_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081=</i>0,")
+        alt_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081\u2260</i>0,")
+        crit_text <- gettext("criterion")
       }
 
       str <- gettextf(
-        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger %s. In order for our test and design to have sufficient sensitivity (power > %s) to detect that %s when the %s is %s or larger, we would need %s.",
-        dType_text, round(power, 3), alt_text,dType_text_2, d, n_text
+        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger effect sizes. In order for our test and design to have sufficient sensitivity (power > %s) to detect that %s when the effect size is %s or larger, we would need %s.",
+        round(power, 3), alt_text, d, n_text
       )
 
       html[["text"]] <- str
@@ -371,9 +361,10 @@ test1PClass <- R6::R6Class(
       ## Get options from interface
       calc <- self$options$calc
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       d <- round(d, 2)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
@@ -381,32 +372,28 @@ test1PClass <- R6::R6Class(
 
       n_text <- gettextf("a sample size of %s", n)
 
-      dType_text <- ifelse(self$options$esType == "h",
-                           gettext("effect sizes"),
-                           gettext("absolute differences in proportions"))
-
       if (alt == "two.sided") {
         tail_text <- gettext("two-sided")
-        null_text <- "<i>\u03B4=</i>0,"
-        alt_text <- "<i>|\u03B4|\u2265</i>"
+        null_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081=</i>0,")
+        alt_text <- gettext("<i>|(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081|\u2265</i>")
         crit_text <- gettext("criteria")
       } else {
         tail_text <- gettext("one-sided")
-        null_text <- "<i>\u03B4\u2264</i>0,"
-        alt_text <- "<i>|\u03B4|\u2265</i>"
+        null_text <- gettext("<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081\u2264</i>0,")
+        alt_text <- gettext("<i>|(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081|\u2265</i>")
         crit_text <- gettext("criterion")
       }
 
       str <- paste(
         "<p>",
-        gettextf("The figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> effect size when <i>%s=</i>0 (left), and when <i>%s=</i>%s (right).", "\u03B4", "\u03B4", d),
+        gettextf("The figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> effect size when <i>%s=</i>0 (left), and when <i>%s=</i>%s (right).", "(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081", "(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081", d),
         gettextf("Both assume %s.", n_text),
         "</p><p>",
         gettextf("The vertical dashed lines show the %s we would set for a %s test with <i>α=</i>%s.", crit_text, tail_text, alpha),
         gettextf("When the observed effect size is far enough away from 0 to be more extreme than the %s we say we 'reject' the null hypothesis.", crit_text),
         gettextf("If the null hypothesis were true and %s the evidence would lead us to wrongly reject the null hypothesis at most %s%% of the time.", null_text, 100 * alpha),
         "</p><p>",
-        gettextf("On the other hand, if <i>%s%s</i>%s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%s%s</i>0 &mdash; at least %s%% of the time.", "\u03B4", "\u2265", d, "\u03B4", "\u2265", 100 * round(power, 3)),
+        gettextf("On the other hand, if <i>%s%s</i>%s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%s%s</i>0 &mdash; at least %s%% of the time.", "(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081", "\u2265", d, "(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081", "\u2265", 100 * round(power, 3)),
         gettextf("The design's power for detecting effects of %s%s is thus %s.", alt_text, d, round(power, 3)),
         "</p>"
       )
@@ -418,23 +405,10 @@ test1PClass <- R6::R6Class(
     #### Populate table ----
     .populatePowerTab = function(results) {
       table <- self$jaspResults[["powertab"]]
-      if (self$options$calc == "es") {
-        calc <- "p1"
-        calc2 <- "h"
-        p0 <- self$options$p0
-        p1 <- results$p
-        d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
-
-        row <- list()
-        row2 <- list()
-        row[[calc]] <- p1
-        row2[[calc2]] <- d
-        table$addColumns(row)
-        table$addColumns(row2)
-
+      if (calc == "es") {
+        table$addColumns(list(p1 = results[["lambda1"]]))
+        table$addColumns(list(es = (results[["lambda1"]] - self$options$p0) / sqrt(results[["lambda1"]])))
       } else {
-        calc <- self$options$calc
-
         row <- list()
         row[[calc]] <- results[[calc]]
         table$addColumns(row)
@@ -492,9 +466,10 @@ test1PClass <- R6::R6Class(
       calc <- self$options$calc
 
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
@@ -506,10 +481,10 @@ test1PClass <- R6::R6Class(
       }
 
       minn <- 2
-      try <- try(pwr.p.test(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
+      try <- try(pwr.pois.test(t = t, n = minn, lambda0 = p0, sig.level = alpha, power = power, alternative = alt))
       while (inherits(try, "try-error")) {
         minn <- minn + 1
-        try <- try(pwr.p.test(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
+        try <- try(pwr.pois.test(t = t, n = minn, lambda0 = p0, sig.level = alpha, power = power, alternative = alt))
       }
 
       nn <- unique(ceiling(exp(seq(log(minn), log(maxn), len = ps$lens)) - .001))
@@ -525,14 +500,14 @@ test1PClass <- R6::R6Class(
       }
 
       z.pwr <- sapply(pp, function(p1) {
-        pwr.p.test(n = nn, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power
+        pwr.pois.test(t = t, n = nn, lambda0 = p0, lambda1 = p1, sig.level = alpha, alternative = alt)$power
       })
 
       z.delta <- sapply(nn, function(N) {
         if(self$options$esType == "h") {
-          2 * (asin(sqrt(pwr.p.test(n = N, p0 = p0, sig.level = alpha, power = power, alternative = alt)$p)) - asin(sqrt(p0)))
+          2 * (asin(sqrt(pwr.pois.test(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1)) - asin(sqrt(p0)))
         } else {
-          abs(pwr.p.test(n = N, p0 = p0, sig.level = alpha, power = power, alternative = alt)$p - p0)
+          abs(pwr.pois.test(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1 - p0)
         }
       })
 
@@ -542,7 +517,7 @@ test1PClass <- R6::R6Class(
         ps = ps,
         nn = nn,
         dd = dd,
-        pp = pp,
+        plambda1 = pp,
         n = n,
         delta = d,
         alpha = alpha,
@@ -583,9 +558,10 @@ test1PClass <- R6::R6Class(
       calc <- self$options$calc
 
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
@@ -601,7 +577,7 @@ test1PClass <- R6::R6Class(
         }
       }
 
-      y <- pwr.p.test(n = n, p0 = p0, p = pp, sig.level = alpha, alternative = alt)$power
+      y <- pwr.pois.test(t = t, n = n, lambda0 = p0, lambda1 = pp, sig.level = alpha, alternative = alt)$power
       cols <- ps$pal(ps$pow.n.levels)
       yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
@@ -640,9 +616,10 @@ test1PClass <- R6::R6Class(
         ps$maxd <- 1 - p0
 
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
@@ -657,7 +634,7 @@ test1PClass <- R6::R6Class(
 
       nn <- seq(minn, maxn)
 
-      y <- pwr.p.test(n = nn, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power
+      y <- pwr.pois.test(t = t, n = nn, lambda0 = p0, lambda1 = p1, sig.level = alpha, alternative = alt)$power
 
       cols <- ps$pal(ps$pow.n.levels)
       yrect <- seq(0, 1, 1 / ps$pow.n.levels)
@@ -708,9 +685,10 @@ test1PClass <- R6::R6Class(
       calc <- self$options$calc
 
       n <- ifelse(calc == "n", r$n, lst$n)
-      p0 <- lst$p0
-      p1 <- ifelse(calc == "es", r$p, lst$p1)
-      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
+      t <- lst$t1
+      lambda0 <- lst$p0
+      lambda1 <- ifelse(calc == "es", r$lambda1, lst$p1)
+      d <- (lambda1 - lambda0) / sqrt(lambda1)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
@@ -719,9 +697,9 @@ test1PClass <- R6::R6Class(
       ncp <- sqrt(effN) * d
 
       if (alt == "two.sided") {
-        crit <- qnorm(p = 1 - alpha / 2)
+        crit <- qnorm(lambda1 = 1 - alpha / 2)
       } else {
-        crit <- qnorm(p = 1 - alpha)
+        crit <- qnorm(lambda1 = 1 - alpha)
       }
 
       if (d > 0) {
@@ -740,7 +718,7 @@ test1PClass <- R6::R6Class(
         x = rep(xx, 2),
         ymin = rep(0, length(xx) * 2),
         ymax = c(yy.null, yy.alt),
-        group = rep(c("Null", "Alt"), each = length(xx))
+        groulambda1 = rep(c("Null", "Alt"), each = length(xx))
       )
 
       if (alt == "two.sided") {

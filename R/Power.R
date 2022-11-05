@@ -15,6 +15,10 @@ Power <- function(jaspResults, dataset, options) {
     instance <- test1VarClass$new(jaspResults, options)
   } else if (options$test == "test_twovar") {
     instance <- test2VarClass$new(jaspResults, options)
+  } else if (options$test == "test_onepois") {
+    instance <- test2VarClass$new(jaspResults, options)
+  } else if (options$test == "test_twopois") {
+    instance <- test2VarClass$new(jaspResults, options)
   } else if (options$test == "anova") {
     instance <- anovaClass$new(jaspResults, options)
   }
