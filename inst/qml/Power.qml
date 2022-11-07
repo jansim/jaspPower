@@ -78,7 +78,7 @@ Form
 				DoubleField {
           id: p0
           name: "p0"
-          label: (test.currentIndex == 4) ? qsTr("p0") : qsTr("p2")
+          label: (test.currentIndex == 4) ? qsTr("p₀") : qsTr("p₂")
           min: 0.01
           max: 0.99
           defaultValue: 0.5
@@ -92,7 +92,7 @@ Form
 				DoubleField {
           id: p1
           name: "p1"
-          label: qsTr("p1")
+          label: qsTr("p₁")
           min: 0.01
           max: 0.99
           defaultValue: 0.6
@@ -196,6 +196,19 @@ Form
 	{
 		expanded: true
 		title: qsTr("Display")
+
+    DropDown
+        {
+          name: "esType"
+          id:   esType
+          indexDefaultValue: 0
+          label: qsTr("Effect size type")
+          values: [
+            { label: "Two-sided", value: "h"},
+            { label: "Less (One-sided)",  value: "less" },
+            { label: "Greater (One-sided)",  value: "greater"}
+          ]
+        }
 
     CheckBox {
       label: qsTr("Power contour plot")

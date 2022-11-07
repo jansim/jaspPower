@@ -642,8 +642,7 @@ test2PClass <- R6::R6Class(
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
-      p0 <- lst$p0
-      p1 <- ifelse(alt == "greater", p0 - d, p0 + d)
+
 
       effN <- n1 * n2 / (n1 + n2)
       ncp <- sqrt(effN) * d
@@ -707,13 +706,13 @@ test2PClass <- R6::R6Class(
       n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$adp, abs(lst$p1 - lst$p0))
+      p0 <- lst$p0
+      p1 <- ifelse(calc == "es", r$p1, lst$p1)
+      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
       d <- round(d, 3)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
-      p0 <- lst$p0
-      p1 <- ifelse(alt == "greater", p0 - d, p0 + d)
 
       n_text <- ifelse(n1 == n2,
                        gettextf("sample sizes of at least %s in each group", n1),
@@ -753,7 +752,9 @@ test2PClass <- R6::R6Class(
       n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$adp, lst$adp)
+      p0 <- lst$p0
+      p1 <- ifelse(calc == "es", r$p1, lst$p1)
+      d <- ifelse(self$options$esType == "h", 2 * (asin(sqrt(p1)) - asin(sqrt(p0))), abs(p1 - p0))
       d <- round(d, 2)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
