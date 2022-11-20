@@ -4,62 +4,105 @@ tTestBaseClass <- R6::R6Class(
   private = list(
     .check = function () {
       alternative <- self$options$alt
-      d <- self$options$es
+      d <- ifelse(self$options$test == "test_onevar" || self$options$test == "test_twovar", self$options$rho, self$options$es)
+      p0 <- self$options$p0
+      p1 <- self$options$p1
       # Check whether the provided effect size is valid
-      if (alternative == "two.sided") {
-        if (d == 0) {
-          stop(gettext("Effect size can't be 0 with a two-sided alternative hypothesis."))
+      if (self$options$test == "ttest_independent" || self$options$test == "ttest_paired" ||
+          self$options$test == "ttest_onesample" || self$options$test == "ztest_onesample") {
+        if (d == 0)
+          .quitAnalysis(gettext("Effect size can't be 0."))
+      } else if (self$options$test == "test_oneprop" && self$options$calc != "es") {
+        if (alternative == "two.sided") {
+          if (p1 == p0) {
+            .quitAnalysis(gettext("The comparison proportion can't be equal to the hypothesized proportion with a 'Two-sided' alternative hypothesis."))
+          }
+        } else if (alternative == "less") {
+          if (p1 > p0) {
+            .quitAnalysis(gettext("The comparison proportion has to be less than the hypothesized proportion with an alternative hypothesis of 'Less'."))
+          }
+        } else if (alternative == "greater") {
+          if (p1 < p0) {
+            .quitAnalysis(gettext("The comparison proportion has to be greater than the hypothesized proportion with an alternative hypothesis of 'Greater'."))
+          }
+        } else {
+          .quitAnalysis(gettext("Invalid alternative."))
         }
-      } else if (alternative == "less") {
-        if (d >= 0) {
-          stop(gettext("Effect size has to be lower than 0 with an alternative hypothesis of lesser."))
+      } else if (self$options$test == "test_twoprop" && self$options$calc != "es") {
+        if (alternative == "two.sided") {
+          if (p1 == p0) {
+            .quitAnalysis(gettext("The comparison proportion can't be equal to the baseline proportion with a 'Two-sided' alternative hypothesis."))
+          }
+        } else if (alternative == "less") {
+          if (p1 > p0) {
+            .quitAnalysis(gettext("The comparison proportion has to be less than the baseline proportion with an alternative hypothesis of 'Less'."))
+          }
+        } else if (alternative == "greater") {
+          if (p1 < p0) {
+            .quitAnalysis(gettext("The comparison proportion has to be greater than the baseline proportion with an alternative hypothesis of 'Greater'."))
+          }
+        } else {
+          .quitAnalysis(gettext("Invalid alternative."))
         }
-      } else if (alternative == "greater") {
-        if (d <= 0) {
-          stop(gettext("Effect size has to be greater than 0 with an alternative hypothesis of greater."))
+      } else if ((self$options$test == "test_onevar" || self$options$test == "test_twovar") && self$options$calc != "es") {
+        if (alternative == "two.sided") {
+          if (d == 1) {
+            .quitAnalysis(gettext("The variance ratio can't be 1 with a 'Two-sided' alternative hypothesis."))
+          }
+        } else if (alternative == "less") {
+          if (d >= 1) {
+            .quitAnalysis(gettext("The variance ratio has to be less than 1 with an alternative hypothesis 'Less'."))
+          }
+        } else if (alternative == "greater") {
+          if (d <= 1) {
+            .quitAnalysis(gettext("The variance ratio has to be greater than 1 with an alternative hypothesis of 'Greater'."))
+          }
+        } else {
+          .quitAnalysis(gettext("Invalid alternative."))
         }
-      } else {
-        stop(gettext("Invalid alternative."))
       }
     },
     #### Init + run functions ----
     .run = function() {
-
       ## Get options from interface
+      if (self$options$test == "test_onevar" || self$options$test == "test_twovar")
+        self$options$es <- self$options$rho
       n <- self$options$n
       n_ratio <- self$options$n_ratio
       pow <- self$options$power
       alt <- self$options$alt
       p0 <- self$options$p0
       p1 <- self$options$p1
-      adp <- self$options$adp
       es <- self$options$es
       alpha <- self$options$alpha
 
-      if (pow >= 1) stop(gettext("Power must be less than 1."))
+      if (pow >= 1) .quitAnalysis(gettext("Power must be less than 1."))
 
       stats <- list(
-        # Independentend samples
+        # Independent samples
         n1 = n,
         n2 = ceiling(n_ratio * n),
-        # Proportion test
+        # One sample
+        n = n,
+        # t and z tests, variance ratio tests
+        es = es,
+        # Proportion tests
         p0 = p0,
         p1 = p1,
-        # Rest
-        n = n,
         # Shared
         n_ratio = n_ratio,
         pow = pow,
         alt = alt,
-        es = es,
         alpha = alpha
       )
 
       ## Compute results
 
-      results <- private$.compute(stats)
+      results <- try(private$.compute(stats))
+      if(inherits(results, "try-error"))
+        .quitAnalysis(gettext("Unable to compute the power results. Try to enter less extreme values for the input parameters."))
 
-      private$.initPowerTab(results)
+      private$.initPowerTab(results, stats)
 
       if (self$options$text) {
         private$.initPowerESTab(results, stats)
@@ -113,12 +156,16 @@ tTestBaseClass <- R6::R6Class(
       )
 
       test_names <- c(
-        ttest_independent = gettext("an indipendent samples t-test"),
+        ttest_independent = gettext("an independent samples t-test"),
         ttest_paired = gettext("a paired samples t-test"),
         ttest_onesample = gettext("a one sample t-test"),
         ztest_onesample = gettext("a one sample z-test"),
         test_oneprop = gettext("a one sample proportions test"),
-        test_twoprop = gettext("a two samples proportions test")
+        test_twoprop = gettext("a two samples proportions test"),
+        test_onevar = gettext("a one sample variance test"),
+        test_twovar = gettext("a two samples variance test"),
+        test_onepois = gettext("a one sample Poisson rate test"),
+        test_twopois = gettext("a two samples Poisson rate test")
       )
       test_sentence_end <- gettextf(
         " when using <i>%s</i>.", test_names[[self$options$test]]
@@ -173,6 +220,14 @@ tTestBaseClass <- R6::R6Class(
         # Add n for indipendent samples
         n <- n1
       }
+      if (self$options$test == "ttest_independent" || self$options$test == "ttest_paired" ||
+           self$options$test == "ttest_onesample" || self$options$test == "ztest_onesample")
+        es <- gettext("|\u03B4|")
+      if (self$options$test == "test_oneprop" || self$options$test == "test_twoprop")
+        es <- gettext("|h|")
+      if (self$options$test == "test_onevar" || self$options$test == "test_twovar")
+        es <- gettext("\u03C1")
+
 
       # If group sizes differ, provide a secondary axis
       secondary_axis <- ggplot2::waiver()
@@ -204,7 +259,7 @@ tTestBaseClass <- R6::R6Class(
         ggplot2::scale_x_log10(sec.axis = secondary_axis) +
         ggplot2::labs(
           x = gettext("Sample size (group 1)"),
-          y = gettextf("Hypothetical effect size (%s)", "\u03B4"),
+          y = gettextf("Hypothetical effect size (%s)", es),
           fill = gettext("Power")
         ) +
         ggplot2::guides(fill = ggplot2::guide_colorsteps(barheight = ggplot2::unit(7, "cm"))) +
@@ -238,6 +293,14 @@ tTestBaseClass <- R6::R6Class(
       dd <- state$dd
       delta <- state$delta
 
+      if (self$options$test == "ttest_independent" || self$options$test == "ttest_paired" ||
+          self$options$test == "ttest_onesample" || self$options$test == "ztest_onesample")
+        es <- gettext("|\u03B4|")
+      if (self$options$test == "test_oneprop" || self$options$test == "test_twoprop")
+        es <- gettext("|h|")
+      if (self$options$test == "test_onevar" || self$options$test == "test_twovar")
+        es <- gettext("\u03C1")
+
       ps <- ttestPlotSettings
 
       if (is.null(n2)) {
@@ -265,7 +328,7 @@ tTestBaseClass <- R6::R6Class(
       p <- p +
         ggplot2::geom_line(size = 1.5) +
         ggplot2::labs(
-          x = gettextf("Hypothetical effect size (%s)", "\u03B4"),
+          x = gettextf("Hypothetical effect size (%s)", es),
           y = gettext("Power"),
           subtitle = plot_subtitle
         ) +
@@ -293,20 +356,22 @@ tTestBaseClass <- R6::R6Class(
       n <- state$n
       y <- state$y
 
+      if (self$options$test == "ttest_independent" || self$options$test == "ttest_paired" ||
+          self$options$test == "ttest_onesample" || self$options$test == "ztest_onesample")
+        es <- gettext("|\u03B4|")
+      if (self$options$test == "test_oneprop" || self$options$test == "test_twoprop")
+        es <- gettext("|h|")
+      if (self$options$test == "test_onevar" || self$options$test == "test_twovar")
+        es <- gettext("\u03C1")
+
       ps <- ttestPlotSettings
 
       if (is.null(n_ratio)) {
         # Paired or one sample
-        plot_subtitle <- substitute(
-          paste(delta == d, ", ", alpha == a),
-          list(a = alpha, d = round(delta, 3))
-        )
+        plot_subtitle <- gettextf("%s = %s, %s = %s", es, round(delta, 3), "\u03B1", alpha)
       } else {
         # Indipendent Samples
-        plot_subtitle <- substitute(
-          paste(delta == d, ", ", N[2] == nr %*% N[1], ", ", alpha == a),
-          list(a = alpha, nr = n_ratio, d = round(delta, 3))
-        )
+        plot_subtitle <- gettextf("%s = %s, N%s = %s %s N%s, %s = %s", es, round(delta, 3),"\u2082", n_ratio, "\u00D7", "\u2081", "\u03B1", alpha)
       }
 
       # Creat basic plot
@@ -341,6 +406,14 @@ tTestBaseClass <- R6::R6Class(
       return(p)
     },
     .powerDist = function(state, ggtheme, ...) {
+      if (self$options$test == "ttest_independent" || self$options$test == "ttest_paired" ||
+          self$options$test == "ttest_onesample" || self$options$test == "ztest_onesample")
+        es <- gettext("|\u03B4|")
+      if (self$options$test == "test_oneprop" || self$options$test == "test_twoprop")
+        es <- gettext("|h|")
+      if (self$options$test == "test_onevar" || self$options$test == "test_twovar")
+        es <- ifelse(state$d < 1, gettext("1/\u03C1"), gettext("\u03C1"))
+
       ps <- ttestPlotSettings
 
       if (is.null(state)) {
@@ -364,7 +437,7 @@ tTestBaseClass <- R6::R6Class(
         ggplot2::geom_vline(data = rect, ggplot2::aes(xintercept = x1), linetype = "dashed") +
         ggplot2::geom_vline(data = rect, ggplot2::aes(xintercept = x2), linetype = "dashed") +
         ggplot2::coord_cartesian(xlim = lims$xlim, ylim = lims$ylim, expand = FALSE) +
-        ggplot2::labs(x = gettext("Observed standardized effect size (d)"), y = gettext("Probability Density")) +
+        ggplot2::labs(x = gettextf("Observed effect size (%s)", es), y = gettext("Probability Density")) +
         ggtheme +
         themeSpec +
         ggplot2::scale_fill_manual(values = ps$pal(5)[c(4, 1)])

@@ -36,9 +36,9 @@ Form
       { label: "One Sample Proportion Test",  value: "test_oneprop"     },
       { label: "Two Samples Proportion Test",  value: "test_twoprop"    },
       { label: "One Sample Variance Ratio Test",  value: "test_onevar" },
-      { label: "Two Samples Variance Ratio Test",  value: "test_twovar"},
-      { label: "One Sample Poisson Rate Test",  value: "test_onepois"   },
-      { label: "Two Samples Poisson Rate Test",  value: "test_twopois"  }
+      { label: "Two Samples Variance Ratio Test",  value: "test_twovar"}
+      //{ label: "One Sample Poisson Rate Test",  value: "test_onepois"   },
+      //{ label: "Two Samples Poisson Rate Test",  value: "test_twopois"  }
       //{ label: "ANOVA",  value: "anova" }
     ]
   }
@@ -72,6 +72,24 @@ Form
         }
 
         Text {
+          text: qsTr("Direction of the effect:")
+          visible: (test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
+          enabled: calc.currentIndex == 2
+        }
+				DropDown 
+        {
+          id: direction
+          name: "directionOfEffect"
+          label: qsTr("")
+          visible: (test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
+          enabled: calc.currentIndex == 2
+          values: [
+            { label: "\u03C1 > 1", value: "greater"},
+            { label: "\u03C1 < 1",  value: "less" }
+          ]
+        }
+
+        Text {
           text: (test.currentIndex == 4) ? qsTr("Hypothesized proportion") : qsTr("Baseline proportion")
           visible: test.currentIndex == 4 || test.currentIndex == 5
         }
@@ -88,6 +106,7 @@ Form
         Text {
           text: qsTr("Comparison proportion")
           visible: test.currentIndex == 4 || test.currentIndex == 5
+          enabled: calc.currentIndex != 2
         }
 				DoubleField {
           id: p1
@@ -97,20 +116,34 @@ Form
           max: 0.99
           defaultValue: 0.6
           visible: test.currentIndex == 4 || test.currentIndex == 5
+          enabled: calc.currentIndex != 2
         }
 
-				Text {
-          text: (test.currentIndex == 6 || test.currentIndex == 7) ? qsTr("Minimal variance ratio of interest") : qsTr("Minimal effect size of interest:")
-          visible: test.currentIndex != 4 && test.currentIndex != 5 && test.currentIndex != 8 && test.currentIndex != 9
+        Text {
+          text: qsTr("Minimal effect size of interest:")
+          visible: test.currentIndex == 0 || test.currentIndex == 1 || test.currentIndex == 2 || test.currentIndex == 3
           enabled: calc.currentIndex != 2
         }
 				DoubleField {
           id: es
           name: "es"
-          label: (test.currentIndex == 6 || test.currentIndex == 7) ? qsTr("ρ") : qsTr("δ")
-          min: 0.01
+          label: qsTr("|δ|")
           defaultValue: 0.5
-          visible: test.currentIndex != 4 && test.currentIndex != 5 && test.currentIndex != 8 && test.currentIndex != 9
+          visible: test.currentIndex == 0 || test.currentIndex == 1 || test.currentIndex == 2 || test.currentIndex == 3
+          enabled: calc.currentIndex != 2
+        }
+
+				Text {
+          text: qsTr("Minimal effect size of interest:")
+          visible: test.currentIndex == 6 || test.currentIndex == 7
+          enabled: calc.currentIndex != 2
+        }
+				DoubleField {
+          id: rho
+          name: "rho"
+          label: (test.currentIndex == 7) ? qsTr("\u03C1 (\u03C3\u2081\u00B2/\u03C3\u2082\u00B2)") : qsTr("\u03C1 (\u03C3\u2081\u00B2/\u03C3\u2080\u00B2)")
+          defaultValue: 2
+          visible: test.currentIndex == 6 || test.currentIndex == 7
           enabled: calc.currentIndex != 2
         }
 
@@ -122,8 +155,8 @@ Form
           id: power
           name: "power"
           label: qsTr("(1-β)")
-          min: 0
-          max: 1
+          min: 0.1
+          max: 0.999
           defaultValue: 0.9
           enabled: calc.currentIndex != 1
         }
@@ -178,7 +211,12 @@ Form
           id:   alt
           indexDefaultValue: 0
           label: qsTr("")
-          values: [
+          values: (test.currentIndex == 0 || test.currentIndex == 1 || test.currentIndex == 2 || test.currentIndex == 3) ?
+          [
+            { label: "Two-sided", value: "two.sided"},
+            { label: "One-sided",  value: "greater" }
+          ] :
+          [
             { label: "Two-sided", value: "two.sided"},
             { label: "Less (One-sided)",  value: "less" },
             { label: "Greater (One-sided)",  value: "greater"}
@@ -204,10 +242,9 @@ Form
           indexDefaultValue: 0
           label: qsTr("Effect size type")
           values: [
-            { label: "Two-sided", value: "h"},
-            { label: "Less (One-sided)",  value: "less" },
-            { label: "Greater (One-sided)",  value: "greater"}
+            { label: "Cohen's h", value: "h"}
           ]
+          visible: false
         }
 
     CheckBox {

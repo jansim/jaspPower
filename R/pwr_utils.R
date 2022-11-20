@@ -85,7 +85,7 @@ pwr.t2n.test <- function(n1 = NULL, n2 = NULL, d = NULL, sig.level = .05, power 
 
 pwr.t2n.ratio <- function(n_ratio = 1, d, sig.level, power, alternative) {
   if (power >= 1) {
-    return(Inf)
+    stop(gettext("Power cannot be 1"))
   }
   fn <- Vectorize(function(n1) {
     effN <- n1 * n_ratio / (1 + n_ratio)
@@ -138,28 +138,31 @@ pwr.p.test <- function (p0 = NULL, p = NULL, n = NULL, sig.level = 0.05, power =
 
   if (tside == 2) {
     p.body <- quote({
-      1 - pnorm(((p0 - p) + qnorm(sig.level/2, lower.tail = FALSE) * sqrt(p0 * (1 - p0) / n)) / sqrt(p * (1 - p) / n)) +
-        pnorm(((p0 - p) - qnorm(sig.level/2, lower.tail = FALSE) * sqrt(p0 * (1 - p0) / n)) / sqrt(p * (1 - p) / n))
+      1 - pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) + qnorm(sig.level/2, lower.tail = FALSE)) +
+        pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) - qnorm(sig.level/2, lower.tail = FALSE))
     })
   }
   if (tside == 3) {
     p.body <- quote({
-      1 - pnorm(((p0 - p) + qnorm(sig.level, lower.tail = FALSE) * sqrt(p0 * (1 - p0) / n)) / sqrt(p * (1 - p) / n))
+      pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) - qnorm(sig.level, lower.tail = FALSE))
     })
   }
   if (tside == 1) {
     p.body <- quote({
-      pnorm(((p0 - p) - qnorm(sig.level, lower.tail = FALSE) * sqrt(p0 * (1 - p0) / n)) / sqrt(p * (1 - p) / n))
+      1 - pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) + qnorm(sig.level, lower.tail = FALSE))
     })
   }
   if (is.null(power))
     power <- eval(p.body)
   else if (is.null(p)) {
-    if(tside != 1) {
+    if(tside == 3)
       p <- uniroot(function(p) eval(p.body) - power, c(p0, 1 - 1e-10))$root
-    } else {
+    if (tside == 1)
       p <- uniroot(function(p) eval(p.body) - power, c(1e-10, p0))$root
+    if (tside == 2) {
+      p <- uniroot(function(p) eval(p.body) - power, c(p0, 1 - 1e-10))$root
     }
+
   }
   else if (is.null(n))
     n <- uniroot(function(n) eval(p.body) - power, c(1e-10, 1e+09))$root
@@ -271,16 +274,26 @@ pwr.var.test <- function (rho = NULL, n = NULL, sig.level = 0.05, power = NULL,
   else if (is.null(rho)) {
 
     if (tside == 2) {
-      rho <- uniroot(function(rho) eval(p.body) - power, c(1e-10, 1-1e-10))$root
-      rho <- c(rho, uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 10))$root)
+      rho1 <- try(uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 1e+09))$root)
+      rho2 <- try(uniroot(function(rho) eval(p.body) - power, c(1e-10, 1-1e-10))$root)
+      if(inherits(rho1, "try-error") && inherits(rho2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(rho1, "try-error")) {
+          rho <- c(NA, rho2)
+        } else if (inherits(rho2, "try-error")) {
+          rho <- c(rho1, NA)
+        } else {
+          rho <- c(rho1, rho2)
+        }
+      }
     }
-
 
     if (tside == 1)
       rho <- uniroot(function(rho) eval(p.body) - power, c(1e-10, 1-1e-10))$root
 
     if (tside == 3)
-      rho <- uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 10))$root
+      rho <- uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 1e+09))$root
   }
   else if (is.null(n))
     n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
@@ -317,38 +330,52 @@ pwr.2var2n.test <- function (rho = NULL, n = NULL, n.ratio = 1, sig.level = 0.05
 
   if (tside == 3) {
     p.body <- quote({
-      1 - pnorm(qt(sig.level, df = n + (n * n.ratio) - 2, lower.tail = FALSE) / ((rho^2 + (n / (n * n.ratio))) / (n * rho^2 / n * n.ratio + 1))^0.5 - ((rho - 1) / (sqrt(pi/2 - 1) * sqrt((rho^2/n + 1/ n * n.ratio)))))
+        1 - pf(qf(1 - sig.level, df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1)
     })
-  }
+    }
+
   if (tside == 1) {
     p.body <- quote({
-      pnorm(qt(sig.level, df = n + (n * n.ratio) - 2, lower.tail = TRUE) / ((rho^2 + (n / (n * n.ratio))) / (n * rho^2 / n * n.ratio + 1))^0.5 - ((rho - 1) / (sqrt(pi/2 - 1) * sqrt((rho^2/n + 1/ n * n.ratio)))))
+        pf(qf(sig.level, df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1)
     })
-  }
+    }
   if (tside == 2) {
     p.body <- quote({
-      1 - pnorm(qt(sig.level/2, df = n + (n * n.ratio) - 2, lower.tail = FALSE) / ((rho^2 + (n / (n * n.ratio))) / (n * rho^2 / n * n.ratio + 1))^0.5 - ((rho - 1) / (sqrt(pi/2 - 1) * sqrt((rho^2/n + 1/ n * n.ratio))))) +
-        pnorm(qt(sig.level/2, df = n + (n * n.ratio) - 2, lower.tail = TRUE) / ((rho^2 + (n / (n * n.ratio))) / (n * rho^2 / n * n.ratio + 1))^0.5 - ((rho - 1) / (sqrt(pi/2 - 1) * sqrt((rho^2/n + 1/ n * n.ratio)))))
+        1 - pf(qf(1 - (sig.level/2), df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1) +
+          pf(qf(sig.level/2, df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1)
     })
-  }
+    }
   if (is.null(power))
     power <- eval(p.body)
   else if (is.null(rho)) {
 
     if (tside == 2) {
-      rho <- uniroot(function(rho) eval(p.body) - power, c(1e-10, 1-1e-10))$root
-      rho <- c(rho, uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 10))$root)
+      rho1 <- try(uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 1e+09))$root)
+      rho2 <- try(uniroot(function(rho) eval(p.body) - power, c(1e-10, 1-1e-10))$root)
+      if(inherits(rho1, "try-error") && inherits(rho2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(rho1, "try-error")) {
+          rho <- c(NA, rho2)
+        } else if (inherits(rho2, "try-error")) {
+          rho <- c(rho1, NA)
+        } else {
+          rho <- c(rho1, rho2)
+        }
+      }
     }
-
-
     if (tside == 1)
       rho <- uniroot(function(rho) eval(p.body) - power, c(1e-10, 1-1e-10))$root
 
     if (tside == 3)
-      rho <- uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 10))$root
+      rho <- uniroot(function(rho) eval(p.body) - power, c(1+1e-10, 1e+09))$root
   }
-  else if (is.null(n))
-    n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
+  else if (is.null(n)) {
+    if(n.ratio >= 1)
+      n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
+    if(n.ratio < 1)
+      n <- uniroot(function(n) eval(p.body) - power, c((2/n.ratio), 1e+09))$root
+  }
   else if (is.null(n.ratio))
     n.ratio <- uniroot(function(n.ratio) eval(p.body) - power, c(1e-10, 1e+09))$root
   else if (is.null(sig.level))

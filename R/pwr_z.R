@@ -4,31 +4,25 @@ ztestOneSClass <- R6::R6Class(
   "ztestOneSClass",
   inherit = tTestBaseClass,
   private = list(
-    #### Member variables ----
-    probs_es = NULL,
 
     #### Compute results ----
     .compute = function(stats) {
       ## Compute numbers for table
-      pow.n <- ceiling(pwr::pwr.norm.test(d = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
-      pow.es <- pwr::pwr.norm.test(n = stats$n, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$d
-      pow.pow <- pwr::pwr.norm.test(n = stats$n, d = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
-
-      # Calculate probs_es here to have access to stats list
-      probs <- c(.5, .8, .95)
-      probs_es <- sapply(probs, function(p) {
-        pwr::pwr.norm.test(
-          n = stats$n, sig.level = stats$alpha, power = p,
-          alternative = stats$alt
-        )$d
-      })
-      private$probs_es <- probs_es
+      pow.n <- NULL
+      pow.es <- NULL
+      pow.pow <- NULL
+      if(self$options$calc == "n")
+        pow.n <- ceiling(pwr::pwr.norm.test(d = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
+      if(self$options$calc == "es")
+        pow.es <- pwr::pwr.norm.test(n = stats$n, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$d
+      if(self$options$calc == "power")
+        pow.pow <- pwr::pwr.norm.test(n = stats$n, d = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
 
       return(list(n = pow.n, es = pow.es, power = pow.pow))
     },
 
     #### Init table ----
-    .initPowerTab = function(results) {
+    .initPowerTab = function(results, stats) {
       table <- self$jaspResults[["powertab"]]
       if (is.null(table)) {
         # Create table if it doesn't exist yet
@@ -64,7 +58,7 @@ ztestOneSClass <- R6::R6Class(
       colNames <- c("n", "es", "power", "alpha")
       colLabels <- c(
         "N",
-        gettext("Effect Size"),
+        gettext("Cohen's |\u03B4|"),
         gettext("Power"),
         "\u03B1"
       )
@@ -85,7 +79,7 @@ ztestOneSClass <- R6::R6Class(
 
       table$addRows(rowNames = 1, row)
 
-      private$.populatePowerTab(results)
+      private$.populatePowerTab(results, stats)
     },
     .initPowerESTab = function(results, stats) {
       table <- self$jaspResults[["powerEStab"]]
@@ -138,66 +132,10 @@ ztestOneSClass <- R6::R6Class(
         table$addRows(rowNames = i, row)
       }
 
-      private$.populatePowerESTab()
+      private$.populatePowerESTab(results, stats)
     },
 
     #### Populate texts ----
-    .populateTabText = function(r, lst) {
-      html <- self$jaspResults[["tabText"]]
-      if (is.null(html)) {
-        html <- createJaspHtml()
-        html$dependOn(c("test", "text"))
-        html$position <- 3
-        self$jaspResults[["tabText"]] <- html
-      }
-
-      ## Get options from interface
-      calc <- self$options$calc
-      n <- ifelse(calc == "n", r$n, lst$n)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
-      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
-      alt <- lst$alt
-
-      n_text <- gettextf("a sample size of ", n)
-
-      tail_text <- ifelse(alt == "two.sided",
-                          gettext("two-sided"),
-                          gettext("one-sided")
-      )
-
-      if (calc == "n") {
-        str <- gettextf(
-          "We would need %s to reliably (with probability greater than %s) detect an effect size of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, power, "\u03B4", "\u2265", d, tail_text, alpha
-        )
-      } else if (calc == "es") {
-        str <- gettextf(
-          "A design with %swill reliably (with probability greater than %s) detect effect sizes of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, power, "\u03B4", "\u2265", round(d, 3), tail_text, alpha
-        )
-      } else if (calc == "power") {
-        str <- gettextf(
-          "A design with %s can detect effect sizes of <i>%s%s</i>%s with a probability of at least%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, "\u03B4", "\u2265", d, round(power, 3), tail_text, alpha
-        )
-      }
-
-      hypo_text <- ifelse(alt == "two.sided",
-                          "<i>|\u03B4|>0</i>",
-                          "<i>\u03B4>0</i>"
-      )
-
-      str <- paste0(
-        str,
-        gettextf(
-          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true effects of increasing sizes; that is, are we likely to correctly conclude that %s when the effect size is large enough to care about?",
-          hypo_text
-        )
-      )
-
-      html[["text"]] <- str
-    },
     .populateContourText = function(r, lst) {
       html <- self$jaspResults[["contourText"]]
       if (is.null(html)) {
@@ -212,9 +150,8 @@ ztestOneSClass <- R6::R6Class(
       ## Get options from interface
       power <- ifelse(calc == "power", r$power, lst$pow)
 
-      str <- gettextf(
-        "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical effect size and the sample sizes in the design. As we increase the sample sizes, smaller effect sizes become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only larger effect sizes, smaller sample sizes are needed. The solid black curve on the contour plot shows sample size/effect size combinations with a power of %s. The point shows the specified  design and effect size.",
-        round(power, 3)
+      str <- gettext(
+        "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical effect size and the sample sizes in the design. As we increase the sample sizes, smaller effect sizes become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only larger effect sizes, smaller sample sizes are needed. The point shows the power of the specified design and effect size."
       )
 
       html[["text"]] <- str
@@ -231,23 +168,25 @@ ztestOneSClass <- R6::R6Class(
       ## Get options from interface
       calc <- self$options$calc
       n <- ifelse(calc == "n", r$n, lst$n)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      d <- round(d, 3)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      d <- ifelse(calc == "es",
+                  r$es,
+                  ifelse(calc == "n",
+                         pwr::pwr.norm.test(n = n, power = power, sig.level = alpha, alternative = alt)$d,
+                         lst$es))
+      d <- round(d, 3)
 
       n_text <- gettextf("sample sizes of %s", n)
 
       if (alt == "two.sided") {
         tail_text <- gettext("two-sided")
-        null_text <- "<i>\u03B4\u2264</i>0,"
         alt_text <- "<i>|\u03B4|\u003E</i>"
         crit_text <- "criteria"
       } else {
         tail_text <- gettext("one-sided")
-        null_text <- "<i>\u03B4=</i>0,"
-        alt_text <- "<i>\u03B4\u003E</i>"
+        alt_text <- "<i>|\u03B4|\u003E</i>"
         crit_text <- "criterion"
       }
 
@@ -261,7 +200,7 @@ ztestOneSClass <- R6::R6Class(
 
       str <- gettextf(
         "<p>The power curve above shows how the sensitivity of the test and design is larger for larger effect sizes. If we obtained %s our test and design would %s to effect sizes of %s%s. <p>We would be more than likely to miss (power less than 50%%) effect sizes less than <i>%s=</i>%s.",
-        n_text, pwr_string, alt_text, d, "\u03B4", round(d50, 3)
+        n_text, pwr_string, alt_text, d, "|\u03B4|", round(d50, 3)
       )
 
       html[["text"]] <- str
@@ -287,13 +226,13 @@ ztestOneSClass <- R6::R6Class(
 
       if (alt == "two.sided") {
         tail_text <- "two-sided"
-        null_text <- "<i>\u03B4\u2264</i>0,"
+        null_text <- "<i>|\u03B4|\u2264</i>0,"
         alt_text <- "<i>|\u03B4|\u003E</i>0,"
         crit_text <- "criteria"
       } else {
         tail_text <- "one-sided"
-        null_text <- "<i>\u03B4=</i>0,"
-        alt_text <- "<i>\u03B4\u2260</i>0,"
+        null_text <- "<i>|\u03B4|=</i>0,"
+        alt_text <- "<i>|\u03B4|\u2260</i>0,"
         crit_text <- "criterion"
       }
 
@@ -326,26 +265,26 @@ ztestOneSClass <- R6::R6Class(
 
       if (alt == "two.sided") {
         tail_text <- gettext("two-sided")
-        null_text <- "<i>\u03B4=</i>0,"
+        null_text <- "<i>|\u03B4|=</i>0,"
         alt_text <- "<i>|\u03B4|\u2265</i>"
         crit_text <- gettext("criteria")
       } else {
         tail_text <- gettext("one-sided")
-        null_text <- "<i>\u03B4\u2264</i>0,"
+        null_text <- "<i>|\u03B4|\u2264</i>0,"
         alt_text <- "<i>|\u03B4|\u2265</i>"
         crit_text <- gettext("criterion")
       }
 
       str <- paste(
         "<p>",
-        gettextf("The figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> effect size when <i>%s=</i>0 (left), and when <i>%s=</i>%s (right).", "\u03B4", "\u03B4", d),
+        gettextf("The figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> effect size when <i>%s=</i>0 (left), and when <i>%s=</i>%s (right).", "|\u03B4|", "|\u03B4|", d),
         gettextf("Both assume %s.", n_text),
         "</p><p>",
         gettextf("The vertical dashed lines show the %s we would set for a %s test with <i>α=</i>%s.", crit_text, tail_text, alpha),
         gettextf("When the observed effect size is far enough away from 0 to be more extreme than the %s we say we 'reject' the null hypothesis.", crit_text),
         gettextf("If the null hypothesis were true and %s the evidence would lead us to wrongly reject the null hypothesis at most %s%% of the time.", null_text, 100 * alpha),
         "</p><p>",
-        gettextf("On the other hand, if <i>%s%s</i>%s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%s%s</i>0 &mdash; at least %s%% of the time.", "\u03B4", "\u2265", d, "\u03B4", "\u2265", 100 * round(power, 3)),
+        gettextf("On the other hand, if <i>%s%s</i>%s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%s%s</i>0 &mdash; at least %s%% of the time.", "|\u03B4|", "\u2265", d, "|\u03B4|", ">", 100 * round(power, 3)),
         gettextf("The design's power for detecting effects of %s%s is thus %s.", alt_text, d, round(power, 3)),
         "</p>"
       )
@@ -355,25 +294,95 @@ ztestOneSClass <- R6::R6Class(
     },
 
     #### Populate table ----
-    .populatePowerTab = function(results) {
+    .populatePowerTab = function(r, lst) {
       table <- self$jaspResults[["powertab"]]
       calc <- self$options$calc
 
+      n <- ifelse(calc == "n", r$n, lst$n)
+      d <- ifelse(calc == "es", r$es, lst$es)
+      power <- ifelse(calc == "power", r$power, lst$pow)
+      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
+      alt <- lst$alt
+
       row <- list()
-      row[[calc]] <- results[[calc]]
+      row[[calc]] <- r[[calc]]
 
       table$addColumns(row)
+      if (calc == "n") {
+        table$addFootnote(gettextf("Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: %1$s</b>",
+                                   round(pwr::pwr.norm.test(n = n, d = d, sig.level = alpha, alternative = alt)$power, 3)
+        ))
+      }
     },
-    .populatePowerESTab = function() {
+    .populatePowerESTab = function(r, lst) {
+      html <- self$jaspResults[["tabText"]]
+      if (is.null(html)) {
+        html <- createJaspHtml()
+        html$dependOn(c("test", "text"))
+        html$position <- 3
+        self$jaspResults[["tabText"]] <- html
+      }
+
+      ## Get options from interface
+      calc <- self$options$calc
+      n <- ifelse(calc == "n", r$n, lst$n)
+      d <- ifelse(calc == "es", r$es, lst$es)
+      power <- ifelse(calc == "power", r$power, lst$pow)
+      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
+      alt <- lst$alt
+
+      n_text <- gettextf("a sample size of ", n)
+
+      tail_text <- ifelse(alt == "two.sided",
+                          gettext("two-sided"),
+                          gettext("one-sided")
+      )
+
+      if (calc == "n") {
+        str <- gettextf(
+          "We would need %s to reliably (with probability greater than or equal to %s) detect an effect size of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          n_text, power, "|\u03B4|", "\u2265", d, tail_text, alpha
+        )
+      } else if (calc == "es") {
+        str <- gettextf(
+          "A design with %swill reliably (with probability greater than or equal to %s) detect effect sizes of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          n_text, power, "|\u03B4|", "\u2265", round(d, 3), tail_text, alpha
+        )
+      } else if (calc == "power") {
+        str <- gettextf(
+          "A design with %s can detect effect sizes of <i>%s%s</i>%s with a probability of at least %s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          n_text, "|\u03B4|", "\u2265", d, round(power, 3), tail_text, alpha
+        )
+      }
+
+      hypo_text <- "<i>|\u03B4|>0</i>"
+
+
+      str <- paste0(
+        str,
+        gettextf(
+          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true effects of increasing sizes; that is, are we likely to correctly conclude that %s when the effect size is large enough to care about?",
+          hypo_text
+        )
+      )
+
+      html[["text"]] <- str
+
       table <- self$jaspResults[["powerEStab"]]
 
-      probs_es <- private$probs_es
+      probs <- c(.5, .8, .95)
+      probs_es <- sapply(probs, function(p) {
+        pwr::pwr.norm.test(
+          n = n, sig.level = alpha, power = p,
+          alternative = alt
+        )$d
+      })
 
       esText <- c(
-        gettextf("0 < %s %s  %s", "\u03B4", "\u2264", format(round(probs_es[1], 3), nsmall = 3)),
-        gettextf("%s < %s %s %s", format(round(probs_es[1], 3), nsmall = 3), "\u03B4", "\u2264", format(round(probs_es[2], 3), nsmall = 3)),
-        gettextf("%s < %s %s %s",format(round(probs_es[2], 3), nsmall = 3), "\u03B4", "\u2264", format(round(probs_es[3], 3), nsmall = 3)),
-        gettextf("%s %s %s", "\u03B4", "\u2265", format(round(probs_es[3], 3), nsmall = 3))
+        gettextf("0 < %s %s  %s", "|\u03B4|", "\u2264", format(round(probs_es[1], 3), nsmall = 3)),
+        gettextf("%s < %s %s %s", format(round(probs_es[1], 3), nsmall = 3), "|\u03B4|", "\u2264", format(round(probs_es[2], 3), nsmall = 3)),
+        gettextf("%s < %s %s %s",format(round(probs_es[2], 3), nsmall = 3), "|\u03B4|", "\u2264", format(round(probs_es[3], 3), nsmall = 3)),
+        gettextf("%s %s %s", "|\u03B4|", "\u2265", format(round(probs_es[3], 3), nsmall = 3))
       )
 
       cols <- list("es" = esText)
@@ -410,13 +419,26 @@ ztestOneSClass <- R6::R6Class(
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
 
-      if (n >= ps$maxn) {
+      maxn <- ceiling(pwr::pwr.t.test(
+        d = d,
+        sig.level = alpha,
+        power = max(0.99, power),
+        alternative = alt,
+        type = private$type)$n)
+
+      if (n >= maxn && n >= ps$maxn) {
         maxn <- ceiling(n * ps$max.scale)
-      } else {
-        maxn <- ps$maxn
+      } else if (maxn < ps$maxn) {
+        if ((ps$maxn - n) < 20) {
+          maxn <- ps$maxn * ps$max.scale
+        } else {
+          maxn <- ps$maxn
+        }
       }
 
-      minn <- 3
+      minn <- 2
+
+      ps$maxd <- max(2, d * 1.2)
 
       nn <- unique(ceiling(exp(seq(log(minn), log(maxn), len = ps$lens)) - .001))
       dd <- seq(ps$mind, ps$maxd, len = ps$lens)
@@ -469,12 +491,17 @@ ztestOneSClass <- R6::R6Class(
       ps <- ttestPlotSettings
 
       calc <- self$options$calc
-
       n <- ifelse(calc == "n", r$n, lst$n)
       d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr::pwr.norm.test(n = n, d = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
+
+      ps$maxd <- pwr::pwr.norm.test(n = n, power = max(0.999, power), sig.level = alpha, alternative = alt)$d
 
       dd <- seq(ps$mind, ps$maxd, len = ps$curve.n)
 
@@ -514,17 +541,24 @@ ztestOneSClass <- R6::R6Class(
 
       n <- ifelse(calc == "n", r$n, lst$n)
       d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr::pwr.norm.test(n = n, d = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
-      if (n >= ps$maxn) {
+      maxn <- ceiling(pwr::pwr.norm.test(
+        d = d,
+        sig.level = alpha,
+        power = max(0.99999, power),
+        alternative = alt)$n)
+
+      if (n >= maxn && n >= ps$maxn)
         maxn <- ceiling(n * ps$max.scale)
-      } else {
-        maxn <- ps$maxn
-      }
 
-      minn <- 3
+      minn <- 2
 
       nn <- seq(minn, maxn)
 
@@ -534,7 +568,7 @@ ztestOneSClass <- R6::R6Class(
       yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
       lims <- data.frame(
-        xlim = c(minn, maxn),
+        xlim = c(min(nn), max(nn)),
         ylim = c(0, 1)
       )
 

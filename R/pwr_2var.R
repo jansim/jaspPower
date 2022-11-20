@@ -8,29 +8,22 @@ test2VarClass <- R6::R6Class(
 
     #### Compute results ----
     .compute = function(stats) {
-
-
       ## Compute numbers for table
-      pow.n <- try(ceiling(pwr.2var2n.test(n.ratio = stats$n_ratio, rho = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n), silent = TRUE)
-      pow.es <- try(pwr.2var2n.test(n = stats$n, n.ratio = stats$n2/stats$n1, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$rho, silent = TRUE)
-      pow.pow <- try(pwr.2var2n.test(n = stats$n1, n.ratio = stats$n2/stats$n1, rho = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power, silent = TRUE)
-      #            pow.alpha = try(pwr.t2n.test(n1 = stats$n1, n2 = stats$n2, d = stats$es, sig.level = NULL, power = stats$pow, alternative = stats$alt)$sig.level, silent=TRUE)
+      pow.n <- NULL
+      pow.es <- NULL
+      pow.pow <- NULL
+      if(self$options$calc == "n")
+        pow.n <- ceiling(pwr.2var2n.test(n.ratio = stats$n_ratio, rho = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
+      if(self$options$calc == "es")
+        pow.es <- pwr.2var2n.test(n = stats$n, n.ratio = stats$n2/stats$n1, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$rho
+      if(self$options$calc == "power")
+        pow.pow <- pwr.2var2n.test(n = stats$n1, n.ratio = stats$n2/stats$n1, rho = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
 
-      #            if (class(pow.alpha) == 'try-error')
-      #                pow.alpha <- 0
-
-      d50 <- pwr.2var2n.test(
-        n = stats$n1,
-        n.ratio = stats$n2/stats$n1,
-        sig.level = stats$alpha,
-        power = .5, alternative = stats$alt
-      )$rho
-
-      return(list(n1 = pow.n, n2 = ceiling(pow.n * stats$n_ratio), es = pow.es, power = pow.pow, d50 = d50))
+      return(list(n1 = pow.n, n2 = ceiling(pow.n * stats$n_ratio), es = pow.es, power = pow.pow))
     },
 
     #### Init table ----
-    .initPowerTab = function(results) {
+    .initPowerTab = function(results, stats) {
       table <- self$jaspResults[["powertab"]]
 
       if (is.null(table)) {
@@ -64,16 +57,15 @@ test2VarClass <- R6::R6Class(
         order <- c(5, 1, 2, 3, 4)
       }
 
-      colNames <- c("n1", "n2", "es", "power", "alpha", "d50")
+      colNames <- c("n1", "n2", "es", "power", "alpha")
       colLabels <- c(
         "N\u2081",
         "N\u2082",
-        gettext("Effect Size"),
+        gettext("Variance ratio (\u03C1)"),
         gettext("Power"),
-        "\u03B1",
-        gettext("ES for design<br/>to have 50% power")
+        "\u03B1"
       )
-      colType <- c("integer", "integer", "number", "number", "number", "number")
+      colType <- c("integer", "integer", "number", "number", "number")
 
       for (i in seq_along(order)) {
         table$addColumnInfo(colNames[order[i]],
@@ -95,14 +87,14 @@ test2VarClass <- R6::R6Class(
 
       table$addRows(rowNames = 1, row)
 
-      private$.populatePowerTab(results)
+      private$.populatePowerTab(results, stats)
     },
     .initPowerESTab = function(results, stats) {
       table <- self$jaspResults[["powerEStab"]]
 
       if (is.null(table)) {
         # Create table if it doesn't exist yet
-        table <- createJaspTable(title = gettext("Power by Effect Size"))
+        table <- createJaspTable(title = gettext("Power by variance ratio"))
         table$dependOn(c(
           "test",
           "es",
@@ -122,7 +114,7 @@ test2VarClass <- R6::R6Class(
 
       table$addColumnInfo(
         name = "es",
-        title = gettext("True effect size"),
+        title = gettext("True variance ratio"),
         type = "string"
       )
       table$addColumnInfo(
@@ -168,7 +160,7 @@ test2VarClass <- R6::R6Class(
       n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
@@ -182,76 +174,108 @@ test2VarClass <- R6::R6Class(
                           "one-sided"
       )
 
-      print("===> pre-calc")
-      probs <- c(.5, .8, .95)
-      probs_es <- sapply(probs, function(p) {
-        pwr.t2n.test(
-          n1 = n1, n2 = n2,
-          sig.level = alpha, power = p,
-          alternative = alt
-        )$d
-      })
-      print("===> post-calc")
-      print(probs_es)
+      sign <- ifelse(d > 1, "\u2265", "\u2264")
+
 
       if (calc == "n") {
         str <- gettextf(
-          "We would need %s to reliably (with probability greater than %s) detect an effect size of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, power, "\u03B4", "\u2265", d, tail_text, alpha
+          "We would need %s to reliably (with probability greater than %s) detect a variance ratio of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          n_text, power, "\u03C1", sign, d, tail_text, alpha
         )
       } else if (calc == "es") {
         str <- gettextf(
-          "A design with %s will reliably (with probability greater than %s) detect effect sizes of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, power, "\u03B4", "\u2265", round(d, 3), tail_text, alpha
+          "A design with %s will reliably (with probability greater than %s) detect variance ratios of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          n_text, power, "\u03C1", sign, round(d, 3), tail_text, alpha
         )
       } else if (calc == "power") {
         str <- gettextf(
-          "A design with %s can detect effect sizes of %s<i>%s%s</i>%s with a probability of at least %s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
-          n_text, d, "\u03B4", "\u2265", round(power, 3), tail_text, alpha
+          "A design with %s can detect variance ratios of %s<i>%s</i>%s with a probability of at least %s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          n_text, "\u03C1", sign, round(d, 3), round(power, 3), tail_text, alpha
         )
       }
 
       hypo_text <- ifelse(alt == "two.sided",
-                          "|<i>\u03B4</i>|><i>0</i>",
-                          "<i>\u03B4>0</i>"
+                          gettextf("<i>%s</i>%s1", "\u03C1", "\u2260"),
+                          ifelse(alt == "less", "<i>\u03C1<1</i>", "<i>\u03C1>1</i>")
       )
 
       str <- paste0(
         str,
         gettextf(
-          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true effects of increasing sizes; that is, are we likely to correctly conclude that %s when the effect size is large enough to care about?",
+          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true effects of increasing sizes; that is, are we likely to correctly conclude that %s when the variance ratio is extreme enough to care about?",
           hypo_text
         )
       )
 
       html[["text"]] <- str
 
+
+      probs <- c(.5, .8, .95)
+      probs_es <- try(sapply(probs, function(p) {
+        if(alt == "two.sided" && d < 1) {
+          pwr.2var2n.test(
+            n = n1, n.ratio = n_ratio, sig.level = alpha, power = p,
+            alternative = alt)$rho[2]
+        } else {
+          pwr.2var2n.test(
+            n = n1, n.ratio = n_ratio, sig.level = alpha, power = p,
+            alternative = alt)$rho[1]
+        }
+      }))
+      if(inherits(probs_es, "try-error")) {
+        table$setError(gettext("The specified design leads to (an) unsolvable equation(s) while computing the values for this power table. Try to enter less extreme values for the parameters."))
+        return()
+      }
+      sign1 <- ifelse(alt == "less" || (alt == "two.sided" && d < 1), ">", "<")
+      sign2 <- ifelse(alt == "less" || (alt == "two.sided" && d < 1), "\u2265", "\u2264")
+      sign3 <- ifelse(alt == "less" || (alt == "two.sided" && d < 1), "\u2264", "\u2265")
+
       esText <- c(
-        gettextf("0 < %s %s  %s", "\u03B4", "\u2264", format(round(probs_es[1], 3), nsmall = 3)),
-        gettextf("%s < %s %s %s", format(round(probs_es[1], 3), nsmall = 3), "\u03B4", "\u2264", format(round(probs_es[2], 3), nsmall = 3)),
-        gettextf("%s < %s %s %s",format(round(probs_es[2], 3), nsmall = 3), "\u03B4", "\u2264", format(round(probs_es[3], 3), nsmall = 3)),
-        gettextf("%s %s %s", "\u03B4", "\u2265", format(round(probs_es[3], 3), nsmall = 3))
+        gettextf("1 %s %s %s  %s", sign1, "\u03C1", sign2, format(round(as.numeric(probs_es[1]), 3), nsmall = 3)),
+        gettextf("%s %s %s %s %s", format(round(as.numeric(probs_es[1]), 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(as.numeric(probs_es[2]), 3), nsmall = 3)),
+        gettextf("%s %s %s %s %s",format(round(as.numeric(probs_es[2]), 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(as.numeric(probs_es[3]), 3), nsmall = 3)),
+        gettextf("%s %s %s", "\u03C1", sign3, format(round(as.numeric(probs_es[3]), 3), nsmall = 3))
       )
 
       cols <- list("es" = esText)
       table$addColumns(cols)
+      if(alt == "two.sided" && calc != "es")
+        table$addFootnote(gettext("To improve readability of this power table for a 'Two-sided' alternative hypothesis, only the intervals in the direction of the specified variance ratio are displayed under 'True variance ratio'"))
     },
     #### Populate table ----
-    .populatePowerTab = function(results) {
+    .populatePowerTab = function(r, lst) {
       table <- self$jaspResults[["powertab"]]
 
       calc <- self$options$calc
+      n_ratio <- lst$n_ratio
+      n1 <- ifelse(calc == "n", r$n1, lst$n1)
+      n2 <- ifelse(calc == "n", r$n2, lst$n2)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
+      power <- ifelse(calc == "power", r$power, lst$pow)
+      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
+      alt <- lst$alt
 
-      # Note: It is unclear what this value actualyl corresponds to
-      # row[["d50"]] <- results[["d50"]]
 
       if (calc == "n") {
-        table$addColumns(list(n1 = results[["n1"]]))
-        table$addColumns(list(n2 = results[["n2"]]))
+        table$addColumns(list(n1 = r[["n1"]]))
+        table$addColumns(list(n2 = r[["n2"]]))
+      } else if (calc == "es") {
+        row <- list()
+        row[[calc]] <- d
+        table$addColumns(row)
       } else {
         row <- list()
-        row[[calc]] <- results[[calc]]
+        row[[calc]] <- r[[calc]]
         table$addColumns(row)
+      }
+      if (calc == "n") {
+        if (round(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3) == 1) {
+          table$addFootnote(gettextf("Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: >0.999"))
+        } else {
+          table$addFootnote(gettextf("Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: %1$s</b>",
+                                     round(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3)
+          ))
+        }
       }
     },
 
@@ -279,59 +303,80 @@ test2VarClass <- R6::R6Class(
         self$jaspResults[["powerContour"]] <- image
       }
 
-      ps <- ttestPlotSettings
-
       calc <- self$options$calc
-
       n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
+      ps <- ttestPlotSettings
 
-      maxn <- pwr.t2n.ratio(
-        n_ratio = n_ratio,
-        power = max(0.9, power),
-        d = d,
+      maxn <- ceiling(pwr.2var2n.test(
+        n.ratio = n_ratio,
+        power = max(0.99, power),
+        rho = d,
         sig.level = alpha,
         alternative = alt
-      )
+      )$n)
 
-      if (n1 > maxn && n1 >= ps$maxn) {
+      if (n1 >= maxn && n1 >= ps$maxn) {
         maxn <- ceiling(n1 * ps$max.scale)
       } else if (maxn < ps$maxn) {
-        maxn <- ps$maxn
+        if ((ps$maxn - n1) < 20) {
+          maxn <- ps$maxn * ps$max.scale
+        } else {
+          maxn <- ps$maxn
+        }
       }
 
-
-      minn <- ifelse(n_ratio < 1,
-                     max(ceiling(3 / (1 + n_ratio)), 2 / n_ratio),
-                     max(ceiling(3 / (1 + n_ratio)), 2 * n_ratio)
-      )
+      minn <- 2
+      try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+      while (inherits(try, "try-error")) {
+        minn <- minn + 1
+        try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+      }
 
       nn <- unique(ceiling(exp(seq(log(minn), log(maxn), len = ps$lens)) - .001))
-      dd <- seq(ps$mind, ps$maxd, len = ps$lens)
-      nn2 <- ceiling(n_ratio * nn)
 
-      z.pwr <- sapply(dd, function(delta) {
-        pwr.t2n.test(n1 = nn, n2 = nn2,
-                     d = delta,
+      mind <- ifelse(alt == "two.sided" || alt == "less", min(d, 0.1), 1)
+      maxd <- ifelse(alt == "less", 1,
+                     ifelse(alt == "two.sided" && d < 1, max(2, ((1/d) * 1.2)), max(2, (d * 1.2)))
+      )
+
+      dd <- seq(mind, maxd, len = 20)
+
+
+      z.pwr <- try(sapply(dd, function(delta) {
+        pwr.2var2n.test(n = nn, n.ratio = n_ratio,
+                     rho = delta,
                      sig.level = alpha,
                      alternative = alt
         )$power
-      })
+      }))
+      if(inherits(z.pwr, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
+        return()
+      }
 
-      z.delta <- sapply(nn, function(N) {
-        n2 <- ceiling(n_ratio * N)
-        pwr.t2n.test(n1 = N, n2 = n2,
+
+      z.delta <- try(sapply(nn, function(N) {
+         pwr.2var2n.test(n = N, n.ratio = n_ratio,
                      sig.level = alpha,
                      power = power,
                      alternative = alt
-        )$d
-      })
+        )$rho
+      }))
+      if(inherits(z.delta, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
+        return()
+      }
 
       state = list(
         z.pwr = z.pwr,
@@ -357,19 +402,8 @@ test2VarClass <- R6::R6Class(
         self$jaspResults[["contourText"]] <- html
       }
 
-      ## Get options from interface
-      calc <- self$options$calc
-      n_ratio <- lst$n_ratio
-      n1 <- ifelse(calc == "n", r$n1, lst$n1)
-      n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
-      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
-      alt <- lst$alt
-
-      str <- gettextf(
-        "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical effect size and the sample sizes in the design. As we increase the sample sizes, smaller effect sizes become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only larger effect sizes, smaller sample sizes are needed. The solid black curve on the contour plot shows sample size/effect size combinationswith a power of %s. The point shows the specified  design and effect size.",
-        round(power, 3)
+      str <- gettext(
+        "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical variance ratio and the sample sizes in the design. As we increase the sample sizes, less extreme variance ratios become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only more extreme variance ratios, smaller sample sizes are needed. The point shows the power of the specified design and variance ratio."
       )
 
       html[["text"]] <- str
@@ -378,7 +412,7 @@ test2VarClass <- R6::R6Class(
       image <- self$jaspResults[["powerCurveES"]]
       if (is.null(image)) {
         image <- createJaspPlot(
-          title = gettext("Power Curve by Effect Size"),
+          title = gettext("Power Curve by variance ratio"),
           width = 400,
           height = 350
         )
@@ -397,20 +431,46 @@ test2VarClass <- R6::R6Class(
         self$jaspResults[["powerCurveES"]] <- image
       }
 
-      ps <- ttestPlotSettings
-
       calc <- self$options$calc
-
+      n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
-      dd <- seq(ps$mind, ps$maxd, len = ps$curve.n)
+      ps <- ttestPlotSettings
 
-      y <- pwr.t2n.test(n1 = n1, n2 = n2, d = dd, sig.level = alpha, alternative = alt)$power
+      maxd <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, power = max(0.99, power), sig.level = alpha, alternative = alt)$rho)
+      if (inherits(maxd, "try-error")) {
+        mind <- ifelse(d < 1, d, 1)
+        maxd <- ifelse(d < 1, 1, d)
+      } else {
+        if (alt == "two.sided") {
+          mind <- min(as.numeric(maxd[2]), d)
+          maxd <- max(as.numeric(maxd[1]), d)
+        } else if(alt == "less") {
+          mind <- min(as.numeric(maxd), d)
+          maxd <- 1
+        } else {
+          mind <- 1
+          maxd <- max(as.numeric(maxd), d)
+        }
+      }
+
+
+      dd <- seq(mind, maxd, len = ps$curve.n)
+
+      y <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = dd, sig.level = alpha, alternative = alt)$power)
+      if(inherits(y, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the power curve. Try to enter less extreme values for the parameters"))
+        return()
+      }
       cols <- ps$pal(ps$pow.n.levels)
       yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
@@ -431,40 +491,68 @@ test2VarClass <- R6::R6Class(
       n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      d <- round(d, 3)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
+      if (alt == "two.sided" && d < 1) {
+        d <- ifelse(calc == "es",
+                    d,
+                    ifelse(calc == "n",
+                           try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[2]),
+                           lst$es))
+      } else {
+        d <- ifelse(calc == "es",
+                    d,
+                    ifelse(calc == "n",
+                           try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[1]),
+                           lst$es))
+      }
+      if(inherits(d, "try-error")) {
+        return()
+      } else{
+        d <- round(as.numeric(d), 3)
+      }
+
 
       n_text <- ifelse(n1 == n2,
                        gettextf("sample sizes of %s in each group", n1),
                        gettextf("group sample sizes of %s and %s, respectively", n1, n2)
       )
 
-      if (alt == "two.sided") {
-        tail_text <- "two-sided"
-        null_text <- "<i>\u03B4\u2264</i>0,"
-        alt_text <- "|<i>\u03B4</i>|<i>\u003E</i>"
-        crit_text <- "criteria"
+      if (d >1) {
+        alt_text <- "<i>\u03C1\u003E</i>"
       } else {
-        tail_text <- "one-sided"
-        null_text <- "<i>\u03B4=</i>0,"
-        alt_text <- "<i>\u03B4\u003E</i>"
-        crit_text <- "criterion"
+        alt_text <- "<i>\u03C1\u003C</i>"
+
       }
 
       if (calc == "power") {
         pwr_string <- gettextf("have power of at least %s", round(power, 3))
       } else {
-        pwr_string <- gettextf("only be sufficiently sensitive (power >%s)", round(power, 3))
+        pwr_string <- gettextf("only be sufficiently sensitive (power > %s)", round(power, 3))
       }
 
-      d50 <- pwr.t2n.test(n1 = n1, n2 = n2, sig.level = alpha, power = .5, alternative = alt)$d
+      if (alt == "two.sided" && d < 1) {
+        d50 <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[2])
+        if (inherits(d50, "try-error"))
+          return()
+        interval <- gettextf("1 > %s > %s", "\u03C1", round(d50, 3))
+      } else {
+        d50 <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[1])
+        if (inherits(d50, "try-error"))
+          return()
+        if (alt == "less" || alt == "two.sided" && d < 1) {
+          interval <- gettextf("1 > %s > %s", "\u03C1", round(as.numeric(d50), 3))
+        } else {
+          interval <- gettextf("1 < %s < %s", "\u03C1", round(as.numeric(d50), 3))
+        }
+
+      }
 
       str <- gettextf(
-        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger effect sizes. If we obtained %s our test and design would %s to effect sizes of %s%s. <p>We would be more than likely to miss (power less than 50%%) effect sizes less than <i>%s=</i>%s.",
-        n_text, pwr_string, alt_text, d, "\u03B4", round(d50, 3)
+        "<p>The power curve above shows how the sensitivity of the test and design is larger for more extreme variance ratios. If we obtained %s our test and design would %s to variance ratios of %s%s. <p>We would be more than likely to miss (power less than 50%%) variance ratios of %s.",
+        n_text, pwr_string, alt_text, d, interval
       )
 
       html[["text"]] <- str
@@ -489,44 +577,52 @@ test2VarClass <- R6::R6Class(
       }
 
       calc <- self$options$calc
-
-      ps <- ttestPlotSettings
-
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
       n_ratio <- lst$n_ratio
-      d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
-      maxn <- pwr.t2n.ratio(
-        n_ratio = n_ratio,
-        power = max(0.9, power),
-        d = d,
+      ps <- ttestPlotSettings
+
+      maxn <- try(ceiling(pwr.2var2n.test(
+        n.ratio = n_ratio,
+        power = max(0.99999, power),
+        rho = d,
         sig.level = alpha,
         alternative = alt
-      )
-
-      if (n1 > maxn && n1 >= ps$maxn) {
+      )$n))
+      if(inherits(maxn, "try-error")) {
+        maxn <- n1
+      } else if (n1 >= maxn && n1 >= ps$maxn) {
         maxn <- ceiling(n1 * ps$max.scale)
-      } else if (maxn < ps$maxn) {
-        maxn <- ps$maxn
       }
 
 
-      minn <- ifelse(n_ratio < 1,
-                     max(ceiling(3 / (1 + n_ratio)), 2 / n_ratio),
-                     max(ceiling(3 / (1 + n_ratio)), 2 * n_ratio)
-      )
+      minn <- 2
+      try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+      while (inherits(try, "try-error")) {
+        minn <- minn + 1
+        try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+      }
 
       nn <- seq(minn, maxn)
 
-      y <- pwr.t2n.test(
-        n1 = nn,
-        n2 = ceiling(nn * lst$n_ratio),
-        d = d, sig.level = alpha, alternative = alt
-      )$power
+      y <- try(pwr.2var2n.test(
+        n = nn,
+        n.ratio = n_ratio,
+        rho = d, sig.level = alpha, alternative = alt
+      )$power)
+      if(inherits(y, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the 'Power Curve by N' plot. Try to enter less extreme values for the parameters"))
+        return()
+      }
 
       cols <- ps$pal(ps$pow.n.levels)
       yrect <- seq(0, 1, 1 / ps$pow.n.levels)
@@ -559,45 +655,61 @@ test2VarClass <- R6::R6Class(
       }
 
       calc <- self$options$calc
-
+      n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
-
-
-      if (d < 0) {
-        d <- 1/d
-        n1_1 <- n1
-        n1 <- n2
-        n2 <- n1_1
-      }
       df1 <- n1 - 1
       df2 <- n2 - 1
+      if (d < 1) {
+        d_copy <- d
+        d <- 1/d
+        df1_1 <- df1
+        df1 <- df2
+        df2 <- df1_1
+      } else {
+        d_copy <- d
+      }
+      if ( alt == "two.sided") {
+        ncp.body <- quote({
+          pf(q = qf(p = alpha/2, df1 =  df1,  df2 =df2, lower.tail = FALSE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = FALSE) +
+            pf(q = qf(p = alpha/2, df1 =  df1,  df2 =df2, lower.tail = TRUE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = TRUE)
+          })
+      } else {
+      ncp.body <- quote({
+        pf(q = qf(p = alpha, df1 =  df1,  df2 =df2, lower.tail = FALSE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = FALSE)
+      })
+      }
 
-
-      ncp <- (n1 + n2) * (d-1)^2
+      ncp <- try(uniroot(function(ncp) eval(ncp.body) - power, c(1e-10, 1e+10))$root)
+      if (inherits(ncp, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the curves for the Power Demonstration. Try to enter less extreme values for the parameters"))
+        return()
+      }
 
       if (alt == "two.sided") {
-        crit <- qf(p = 1 - alpha / 2, df1 = df1, df2 = df2)
+        crit_upper <- qf(p = 1 - alpha / 2, df1 = df1, df2 = df2)
+        crit_lower <- qf(p = alpha / 2, df1 = df1, df2 = df2)
       } else {
         crit <- qf(p = 1 - alpha, df1 = df1, df2 = df2)
-      }
+        }
 
-      if (d > 1) {
-        xlims <- c(qf(.001, df1 = df1, df2 = df2), qf(.999, df1 = df1, df2 = df2, ncp = ncp))
-      } else {
-        xlims <- c(qf(.001, df1 = df1, df2 = df2, ncp = ncp), qf(.999, df1 = df1, df2 = df2))
-      }
 
-      y.max <- dchisq(df1 - 2, df1)/ dchisq(df2 - 2, df2)
+      xlims <- c(0, qf(.999^(d), df1 = df1, df2 = df2, ncp = ncp))
 
-      xx <- seq(xlims[1], xlims[2], len = 100)
+      xx <- seq(xlims[1], xlims[2], len = 1000)
       yy.null <- df(xx, df1 = df1, df2 = df2)
       yy.alt <- df(xx, df1 = df1, df2 = df2, ncp)
+
+      y.max <- min(max(yy.null), max(yy.alt) * 5)
 
       curves <- data.frame(
         x = rep(xx, 2),
@@ -608,7 +720,7 @@ test2VarClass <- R6::R6Class(
 
       if (alt == "two.sided") {
         rect <- data.frame(
-          x1 = -crit, x2 = crit,
+          x1 = crit_lower, x2 = crit_upper,
           y1 = 0, y2 = y.max * 1.1
         )
       } else {
@@ -616,14 +728,14 @@ test2VarClass <- R6::R6Class(
           x1 = xlims[1] - 1, x2 = crit,
           y1 = 0, y2 = y.max * 1.1
         )
-      }
+        }
 
       lims <- data.frame(
         xlim = c(xlims[1], xlims[2]),
         ylim = c(0, y.max * 1.1)
       )
 
-      state = list(curves = curves, rect = rect, lims = lims)
+      state = list(curves = curves, rect = rect, lims = lims, d = d_copy)
       image$plotObject <- private$.powerDist(state = state, ggtheme = pwr_plot_theme())
     },
     .populatePowerCurveNText = function(r, lst) {
@@ -640,7 +752,7 @@ test2VarClass <- R6::R6Class(
       n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
       d <- round(d, 3)
       power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
@@ -651,20 +763,18 @@ test2VarClass <- R6::R6Class(
                        gettextf("group sample sizes of at least %s and %s, respectively", n1, n2)
       )
 
-      if (alt == "two.sided") {
-        tail_text <- "two-sided"
-        null_text <- "<i>\u03B4\u2264</i>0,"
-        alt_text <- "|<i>\u03B4</i>|<i>\u003E</i>0,"
-        crit_text <- "criteria"
+      if(alt == "two.sided") {
+        alt_text <- "<i>\u03C1\u2260</i>1"
       } else {
-        tail_text <- "one-sided"
-        null_text <- "<i>\u03B4=</i>0,"
-        alt_text <- "<i>\u03B4\u2260</i>0,"
-        crit_text <- "criterion"
+        if (d >1) {
+          alt_text <- "<i>\u03C1\u003E</i>1"
+        } else {
+          alt_text <- "<i>\u03C1\u003C</i>1"
+        }
       }
 
       str <- gettextf(
-        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger effect sizes. In order for our test and design to have sufficient sensitivity (power > %s) to detect that %s when the effect size is %s or larger, we would need %s.",
+        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger sample sizes. In order for our test and design to have sufficient sensitivity (power > %s) to detect that %s when the variance ratio is %s or more extreme, we would need %s.",
         round(power, 3), alt_text, d, n_text
       )
 
@@ -684,40 +794,62 @@ test2VarClass <- R6::R6Class(
       n_ratio <- lst$n_ratio
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
+      if(calc == "es") d <- ifelse(self$options$directionOfEffect == "greater", r$es[1], r$es[2]) else d <- lst$es
       d <- round(d, 2)
-      power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
+      if(d < 1) {
+        n1_1 <- n1
+        n1 <- n2
+        n2 <- n1_1
+      }
       n_text <- ifelse(n1 == n2,
                        gettextf("a sample size of %s in each group", n1),
                        gettextf("group sample sizes of %s and %s, respectively", n1, n2)
       )
+      if (d <1 )
+        ratio_text <- gettext("<i>Note.</i> When the variance ratio is less than 1, the inverse of the variance ratio is displayed. Therefore, the first and second degrees of freedom of both F-distributions switched places.\n\n")
+      if (d > 1)
+        ratio_text <- gettext("")
 
+      es_text <- ifelse(d < 1, gettextf("1/%s", "\u03C1"),gettextf("%s", "\u03C1"))
+      d       <- ifelse(d < 1, round(1/d, 2), d)
       if (alt == "two.sided") {
         tail_text <- gettext("two-sided")
-        null_text <- "<i>\u03B4=</i>0,"
-        alt_text <- "|<i>\u03B4</i>|<i>\u2265</i>"
+        null_text <- gettextf("<i>%s=</i>1,", es_text)
+        alt_text <- gettextf("<i>%s</i><i>\u2260</i>", es_text)
         crit_text <- gettext("criteria")
+
+      } else if (alt == "less") {
+        tail_text <- gettext("one-sided")
+        null_text <- gettextf("<i>%s\u2265</i>1,", es_text)
+        alt_text <- gettextf("<i>%s\u2264</i", es_text)
+        crit_text <- gettext("criterion")
       } else {
         tail_text <- gettext("one-sided")
-        null_text <- "<i>\u03B4\u2264</i>0,"
-        alt_text <- "<i>\u03B4\u2265</i"
+        null_text <- gettextf("<i>%s\u2264</i>1,", es_text)
+        alt_text <- gettextf("<i>%s\u2265</i", es_text)
         crit_text <- gettext("criterion")
       }
 
+
       str <- paste(
         "<p>",
-        gettextf("The figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> effect size when <i>%s=</i>0 (left), and when <i>%s=</i>%s (right).", "\u03B4", "\u03B4", d),
+        gettextf("%sThe figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> variance ratio when <i>%s=</i>1 (left), and when <i>%s=</i>%s (right).",ratio_text, es_text, es_text, d),
         gettextf("Both assume %s.", n_text),
         "</p><p>",
         gettextf("The vertical dashed lines show the %s we would set for a %s test with <i>α=</i>%s.", crit_text, tail_text, alpha),
-        gettextf("When the observed effect size is far enough away from 0 to be more extreme than the %s we say we 'reject' the null hypothesis.", crit_text),
+        gettextf("When the observed variance ratio is far enough away from 1 to be more extreme than the %s we say we 'reject' the null hypothesis.", crit_text),
         gettextf("If the null hypothesis were true and %s the evidence would lead us to wrongly reject the null hypothesis at most %s%% of the time.", null_text, 100 * alpha),
         "</p><p>",
-        gettextf("On the other hand, if <i>%s%s</i>%s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%s%s</i>0 &mdash; at least %s%% of the time.", "\u03B4", "\u2265", d, "\u03B4", "\u2265", 100 * round(power, 3)),
-        gettextf("The design's power for detecting effects of %s%s is thus %s.", alt_text, d, round(power, 3)),
+        gettextf("On the other hand, if <i>%s%s</i>%s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%s</i>1 &mdash; at least %s%% of the time.", es_text, "\u2265", d, alt_text, 100 * round(power, 3)),
+        gettextf("The design's power for detecting effects of %s%s%s is thus %s.", es_text, "\u2265", d, round(power, 3)),
         "</p>"
       )
 
