@@ -73,7 +73,7 @@ Form
 
         Text {
           text: qsTr("Direction of the effect:")
-          visible: (test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
+          visible: (test.currentIndex == 4 || test.currentIndex == 5 || test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
           enabled: calc.currentIndex == 2
         }
 				DropDown 
@@ -81,11 +81,11 @@ Form
           id: direction
           name: "directionOfEffect"
           label: qsTr("")
-          visible: (test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
+          visible: (test.currentIndex == 4 || test.currentIndex == 5 || test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
           enabled: calc.currentIndex == 2
           values: [
-            { label: "\u03C1 > 1", value: "greater"},
-            { label: "\u03C1 < 1",  value: "less" }
+            { label: (test.currentIndex == 4 || test.currentIndex == 5) ? ((test.currentIndex == 4) ? qsTr("p\u2081 > p\u2080") : qsTr("p\u2081 > p\u2082")) : qsTr("\u03C1 > 1"), value: "greater"},
+            { label: (test.currentIndex == 4 || test.currentIndex == 5) ? ((test.currentIndex == 4) ? qsTr("p\u2081 < p\u2080") : qsTr("p\u2081 < p\u2082")) : qsTr("\u03C1 < 1"),  value: "less" }
           ]
         }
 

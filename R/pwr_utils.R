@@ -160,9 +160,20 @@ pwr.p.test <- function (p0 = NULL, p = NULL, n = NULL, sig.level = 0.05, power =
     if (tside == 1)
       p <- uniroot(function(p) eval(p.body) - power, c(1e-10, p0))$root
     if (tside == 2) {
-      p <- uniroot(function(p) eval(p.body) - power, c(p0, 1 - 1e-10))$root
+      p_1 <- try(uniroot(function(p) eval(p.body) - power, c(p0, 1 - 1e-10))$root)
+      p_2 <- try(uniroot(function(p) eval(p.body) - power, c(1e-10, p0))$root)
+      if(inherits(p_1, "try-error") && inherits(p_2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(p_1, "try-error")) {
+          p <- c(NA, p_2)
+        } else if (inherits(p_2, "try-error")) {
+          p <- c(p_1, NA)
+        } else {
+          p <- c(p_1, p_2)
+        }
+      }
     }
-
   }
   else if (is.null(n))
     n <- uniroot(function(n) eval(p.body) - power, c(1e-10, 1e+09))$root
@@ -213,15 +224,30 @@ pwr.2p2n.test <- function (p0 = NULL, p1 = NULL, n = NULL, n.ratio = 1, sig.leve
   if (is.null(power))
     power <- eval(p.body)
   else if (is.null(p1)) {
-
     if (tside == 2) {
-      p1 <- uniroot(function(p1) eval(p.body) - power, c(p0 + 1e-10, 1-1e-10))$root
+      p_1 <- try(uniroot(function(p1) eval(p.body) - power, c(p0, 1 - 1e-10))$root)
+      p_2 <- try(uniroot(function(p1) eval(p.body) - power, c(1e-10, p0))$root)
+      if(inherits(p_1, "try-error") && inherits(p_2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(p_1, "try-error")) {
+          p1 <- c(NA, p_2)
+        } else if (inherits(p_2, "try-error")) {
+          p1 <- c(p_1, NA)
+        } else {
+          p1 <- c(p_1, p_2)
+        }
+      }
     } else {
       p1 <- uniroot(function(p1) eval(p.body) - power, c(1e-10, 1-1e-10))$root
     }
   }
-  else if (is.null(n))
-    n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
+  else if (is.null(n)) {
+    if(n.ratio >= 1)
+      n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
+    if(n.ratio < 1)
+      n <- uniroot(function(n) eval(p.body) - power, c((2/n.ratio), 1e+09))$root
+  }
   else if (is.null(n.ratio))
     n.ratio <- uniroot(function(n.ratio) eval(p.body) - power, c(1e-10, 1e+09))$root
   else if (is.null(sig.level))

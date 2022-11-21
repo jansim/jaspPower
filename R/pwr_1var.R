@@ -2,7 +2,7 @@
 
 test1VarClass <- R6::R6Class(
   "test1VarClass",
-  inherit = tTestBaseClass,
+  inherit = baseClass,
   private = list(
 
     #### Compute results ----
@@ -30,6 +30,8 @@ test1VarClass <- R6::R6Class(
         table$dependOn(c(
           "test",
           "es",
+          "rho",
+          "directionOfEffect",
           "power",
           "n",
           "alt",
@@ -89,6 +91,8 @@ test1VarClass <- R6::R6Class(
         table$dependOn(c(
           "test",
           "es",
+          "rho",
+          "directionOfEffect",
           "power",
           "n",
           "alt",
@@ -186,7 +190,7 @@ test1VarClass <- R6::R6Class(
         d <- round(as.numeric(d), 3)
       }
 
-      n_text <- gettextf("sample sizes of %s", n)
+      n_text <- gettextf("sample sizes of %1$s", n)
 
       if (d >1) {
         alt_text <- "<i>\u03C1\u003E</i>"
@@ -196,30 +200,30 @@ test1VarClass <- R6::R6Class(
       }
 
       if (calc == "power") {
-        pwr_string <- gettextf("have power of at least %s", round(power, 3))
+        pwr_string <- gettextf("have power of at least %1$s", round(power, 3))
       } else {
-        pwr_string <- gettextf("only be sufficiently sensitive (power > %s)", round(power, 3))
+        pwr_string <- gettextf("only be sufficiently sensitive (power > %1$s)", round(power, 3))
       }
 
       if (alt == "two.sided" && d < 1) {
         d50 <- try(pwr.var.test(n = n, sig.level = alpha, power = .5, alternative = alt)$rho[2])
         if (inherits(d50, "try-error"))
           return()
-        interval <- gettextf("1 > %s > %s", "\u03C1", round(d50, 3))
+        interval <- gettextf("1 > %1$s > %2$s", "\u03C1", round(d50, 3))
       } else {
         d50 <- try(pwr.var.test(n = n, sig.level = alpha, power = .5, alternative = alt)$rho[1])
         if (inherits(d50, "try-error"))
           return()
         if (alt == "less") {
-          interval <- gettextf("1 > %s > %s", "\u03C1", round(d50, 3))
+          interval <- gettextf("1 > %1$s > %2$s", "\u03C1", round(d50, 3))
         } else {
-          interval <- gettextf("1 < %s < %s", "\u03C1", round(d50, 3))
+          interval <- gettextf("1 < %1$s < %2$s", "\u03C1", round(d50, 3))
         }
 
       }
 
       str <- gettextf(
-        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger variance ratios. If we obtained %s our test and design would %s to variance ratios of %s%s. <p>We would be more than likely to miss (power less than 50%%) variance ratios of %s.",
+        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger variance ratios. If we obtained %1$s our test and design would %2$s to variance ratios of %3$s%4$s. <p>We would be more than likely to miss (power less than 50%%) variance ratios of %5$s.",
         n_text, pwr_string, alt_text, d, interval
       )
 
@@ -242,7 +246,7 @@ test1VarClass <- R6::R6Class(
       power <- ifelse(calc == "power", r$power, lst$pow)
       alt <- lst$alt
 
-      n_text <- gettextf("sample sizes of at least %s", n)
+      n_text <- gettextf("sample sizes of at least %1$s", n)
 
       if(alt == "two.sided") {
         alt_text <- "<i>\u03C1\u2260</i>1"
@@ -255,7 +259,7 @@ test1VarClass <- R6::R6Class(
       }
 
       str <- gettextf(
-        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger sample sizes. In order for our test and design to have sufficient sensitivity (power > %s) to detect that %s when the variance ratio is %s or more extreme, we would need %s.",
+        "<p>The power curve above shows how the sensitivity of the test and design is larger for larger sample sizes. In order for our test and design to have sufficient sensitivity (power > %1$s) to detect that %2$s when the variance ratio is %3$s or more extreme, we would need %4$s.",
         round(power, 3), alt_text, d, n_text
       )
 
@@ -283,13 +287,13 @@ test1VarClass <- R6::R6Class(
                              pwr.var.test(n = n, rho = d, sig.level = alpha, alternative = alt)$power,
                              lst$pow))
 
-      n_text <- gettextf("a sample size of %s", n)
+      n_text <- gettextf("a sample size of %1$s", n)
 
       if (alt == "two.sided") {
         tail_text <- gettext("two-sided")
         null_text <- gettext("<i>\u03C1=</i>1,")
         crit_text <- gettext("criteria")
-        hypo_text <- gettextf("%s%s", "\u03C1", "\u2260")
+        hypo_text <- gettextf("%1$s%2$s", "\u03C1", "\u2260")
         if (d > 1)
           alt_text <- "<i>\u03C1\u2265</i>"
         if (d < 1)
@@ -299,27 +303,27 @@ test1VarClass <- R6::R6Class(
         crit_text <- gettext("criterion")
         if (d > 1){
           alt_text <- "<i>\u03C1\u2265</i>"
-          hypo_text <- gettextf("%s>", "\u03C1")
+          hypo_text <- gettextf("%1$s>", "\u03C1")
           null_text <- "<i>\u03C1\u2264</i>1,"
         }
         if (d < 1) {
           alt_text <- "<i>\u03C1\u2264</i>"
-          hypo_text <- gettextf("%s<", "\u03C1")
+          hypo_text <- gettextf("%1$s<", "\u03C1")
           null_text <- "<i>\u03C1\u2265</i>1,"
         }
       }
 
       str <- paste(
         "<p>",
-        gettextf("The figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> variance ratio when <i>%s=</i>1, and when <i>%s=</i>%s.", "\u03C1", "\u03C1", d),
-        gettextf("Both assume %s.", n_text),
+        gettextf("The figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> variance ratio when <i>%1$s=</i>1, and when <i>%2$s=</i>%3$s.", "\u03C1", "\u03C1", d),
+        gettextf("Both assume %1$s.", n_text),
         "</p><p>",
-        gettextf("The vertical dashed lines show the %s we would set for a %s test with <i>α=</i>%s.", crit_text, tail_text, alpha),
-        gettextf("When the observed variance ratio is far enough away from 1 to be more extreme than the %s we say we 'reject' the null hypothesis.", crit_text),
-        gettextf("If the null hypothesis were true and %s the evidence would lead us to wrongly reject the null hypothesis at most %s%% of the time.", null_text, 100 * alpha),
+        gettextf("The vertical dashed lines show the %1$s we would set for a %2$s test with <i>\u03B1=</i>%3$s.", crit_text, tail_text, alpha),
+        gettextf("When the observed variance ratio is far enough away from 1 to be more extreme than the %1$s we say we 'reject' the null hypothesis.", crit_text),
+        gettextf("If the null hypothesis were true and %1$s the evidence would lead us to wrongly reject the null hypothesis at most %2$s%% of the time.", null_text, 100 * alpha),
         "</p><p>",
-        gettextf("On the other hand, if <i>%s</i>%s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%s</i>1 &mdash; at least %s%% of the time.", alt_text, d, hypo_text, 100 * round(power, 3)),
-        gettextf("The design's power for detecting effects of %s%s is thus %s.", alt_text, d, round(power, 3)),
+        gettextf("On the other hand, if <i>%1$s</i>%2$s, the evidence would exceed the criterion  &mdash; and hence we would correctly claim that <i>%3$s</i>1 &mdash; at least %4$s%% of the time.", alt_text, d, hypo_text, 100 * round(power, 3)),
+        gettextf("The design's power for detecting effects of %1$s%2$s is thus %3$s.", alt_text, d, round(power, 3)),
         "</p>"
       )
 
@@ -387,30 +391,30 @@ test1VarClass <- R6::R6Class(
 
       if (calc == "n") {
         str <- gettextf(
-          "We would need %s to reliably (with probability greater than %s) detect a variance ratio of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          "We would need %1$s to reliably (with probability greater than %2$s) detect a variance ratio of <i>%3$s%4$s</i>%5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>\u03B1=</i>%7$s.",
           n_text, power, "\u03C1", sign, d, tail_text, alpha
         )
       } else if (calc == "es") {
         str <- gettextf(
-          "A design with %s will reliably (with probability greater than %s) detect variance ratios of <i>%s%s</i>%s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          "A design with %1$s will reliably (with probability greater than %2$s) detect variance ratios of <i>%3$s%4$s</i>%5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>\u03B1=</i>%7$s.",
           n_text, power, "\u03C1", sign, round(d, 3), tail_text, alpha
         )
       } else if (calc == "power") {
         str <- gettextf(
-          "A design with %s can detect variance ratios of %s<i>%s</i>%s with a probability of at least %s, assuming a %s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%s.",
+          "A design with %1$s can detect variance ratios of <i>%2$s%3$s</i>%4$s with a probability of at least %5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>\u03B1=</i>%7$s.",
           n_text, "\u03C1", sign, round(d, 3), round(power, 3), tail_text, alpha
         )
       }
 
       hypo_text <- ifelse(alt == "two.sided",
-                          gettextf("<i>%s</i>%s1", "\u03C1", "\u2260"),
+                          gettextf("<i>%1$s</i>%2$s1", "\u03C1", "\u2260"),
                           ifelse(alt == "less", "<i>\u03C1<1</i>", "<i>\u03C1>1</i>")
       )
 
       str <- paste0(
         str,
         gettextf(
-          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true effects of increasing sizes; that is, are we likely to correctly conclude that %s when the variance ratio is large enough to care about?",
+          "<p>To evaluate the design specified in the table, we can consider how sensitive it is to true effects of increasing sizes; that is, are we likely to correctly conclude that %1$s when the variance ratio is large enough to care about?",
           hypo_text
         )
       )
@@ -440,10 +444,10 @@ test1VarClass <- R6::R6Class(
       sign3 <- ifelse(alt == "less" || (alt == "two.sided" && d < 1), "\u2264", "\u2265")
 
       esText <- c(
-        gettextf("1 %s %s %s  %s", sign1, "\u03C1", sign2, format(round(probs_es[1], 3), nsmall = 3)),
-        gettextf("%s %s %s %s %s", format(round(probs_es[1], 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(probs_es[2], 3), nsmall = 3)),
-        gettextf("%s %s %s %s %s",format(round(probs_es[2], 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(probs_es[3], 3), nsmall = 3)),
-        gettextf("%s %s %s", "\u03C1", sign3, format(round(probs_es[3], 3), nsmall = 3))
+        gettextf("1 %1$s %2$s %3$s  %4$s", sign1, "\u03C1", sign2, format(round(probs_es[1], 3), nsmall = 3)),
+        gettextf("%1$s %2$s %3$s %4$s %5$s", format(round(probs_es[1], 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(probs_es[2], 3), nsmall = 3)),
+        gettextf("%1$s %2$s %3$s %4$s %5$s",format(round(probs_es[2], 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(probs_es[3], 3), nsmall = 3)),
+        gettextf("%1$s %2$s %3$s", "\u03C1", sign3, format(round(probs_es[3], 3), nsmall = 3))
       )
 
       cols <- list("es" = esText)
@@ -460,6 +464,8 @@ test1VarClass <- R6::R6Class(
         image$dependOn(c(
           "test",
           "es",
+          "rho",
+          "directionOfEffect",
           "power",
           "n",
           "alt",
@@ -555,6 +561,8 @@ test1VarClass <- R6::R6Class(
         image$dependOn(c(
           "test",
           "es",
+          "rho",
+          "directionOfEffect",
           "power",
           "n",
           "alt",
@@ -622,6 +630,8 @@ test1VarClass <- R6::R6Class(
         image$dependOn(c(
           "test",
           "es",
+          "rho",
+          "directionOfEffect",
           "power",
           "n",
           "alt",
@@ -705,6 +715,8 @@ test1VarClass <- R6::R6Class(
         image$dependOn(c(
           "test",
           "es",
+          "rho",
+          "directionOfEffect",
           "power",
           "n",
           "alt",

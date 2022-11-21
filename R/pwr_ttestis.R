@@ -2,7 +2,7 @@
 
 ttestISClass <- R6::R6Class(
   "ttestISClass",
-  inherit = tTestBaseClass,
+  inherit = baseClass,
   private = list(
     # Functions are called from .run in the parent class
 
@@ -176,17 +176,17 @@ ttestISClass <- R6::R6Class(
 
       if (calc == "n") {
         str <- gettextf(
-          "We would need %1$s to reliably (with probability greater than or equal to %2$s) detect an effect size of <i>%3$s%4$s</i>%5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%7$s.",
+          "We would need %1$s to reliably (with probability greater than or equal to %2$s) detect an effect size of <i>%3$s%4$s</i>%5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>\u03B1=</i>%7$s.",
           n_text, power, "|\u03B4|", "\u2265", d, tail_text, alpha
         )
       } else if (calc == "es") {
         str <- gettextf(
-          "A design with %1$s will reliably (with probability greater than or equal to %2$s) detect effect sizes of <i>%3$s%4$s</i>%5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%7$s.",
+          "A design with %1$s will reliably (with probability greater than or equal to %2$s) detect effect sizes of <i>%3$s%4$s</i>%5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>\u03B1=</i>%7$s.",
           n_text, power, "|\u03B4|", "\u2265", round(d, 3), tail_text, alpha
         )
       } else if (calc == "power") {
         str <- gettextf(
-          "A design with %1$s can detect effect sizes of <i>%2$s%3$s</i>%4$s with a probability of at least %5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>α=</i>%7$s.",
+          "A design with %1$s can detect effect sizes of <i>%2$s%3$s</i>%4$s with a probability of at least %5$s, assuming a %6$s criterion for detection that allows for a maximum Type I error rate of <i>\u03B1=</i>%7$s.",
           n_text, "|\u03B4|", "\u2265", d, round(power, 3), tail_text, alpha
         )
       }
@@ -204,13 +204,17 @@ ttestISClass <- R6::R6Class(
       html[["text"]] <- str
 
       probs <- c(.5, .8, .95)
-      probs_es <- sapply(probs, function(p) {
+      probs_es <- try(sapply(probs, function(p) {
         pwr.t2n.test(
           n1 = n1, n2 = n2,
           sig.level = alpha, power = p,
           alternative = alt
         )$d
-      })
+      }))
+      if(inherits(probs_es, "try-error")) {
+        table$setError(gettext("The specified design leads to (an) unsolvable equation(s) while computing the values for this power table. Try to enter less extreme values for the parameters."))
+        return()
+      }
 
       esText <- c(
         gettextf("0 < %1$s %2$s  %3$s", "|\u03B4|", "\u2264", format(round(probs_es[1], 3), nsmall = 3)),
@@ -284,9 +288,13 @@ ttestISClass <- R6::R6Class(
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
       d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
 
       maxn <- pwr.t2n.ratio(
@@ -318,22 +326,30 @@ ttestISClass <- R6::R6Class(
       dd <- seq(ps$mind, ps$maxd, len = ps$lens)
       nn2 <- ceiling(n_ratio * nn)
 
-      z.pwr <- sapply(dd, function(delta) {
+      z.pwr <- try(sapply(dd, function(delta) {
         pwr.t2n.test(n1 = nn, n2 = nn2,
           d = delta,
           sig.level = alpha,
           alternative = alt
         )$power
-      })
+      }))
+      if(inherits(z.pwr, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
+        return()
+      }
 
-      z.delta <- sapply(nn, function(N) {
+      z.delta <- try(sapply(nn, function(N) {
         n2 <- ceiling(n_ratio * N)
         pwr.t2n.test(n1 = N, n2 = n2,
           sig.level = alpha,
           power = power,
           alternative = alt
         )$d
-      })
+      }))
+      if(inherits(z.delta, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
+        return()
+      }
 
       state = list(
         z.pwr = z.pwr,
@@ -358,16 +374,6 @@ ttestISClass <- R6::R6Class(
         html$position <- 6
         self$jaspResults[["contourText"]] <- html
       }
-
-      ## Get options from interface
-      calc <- self$options$calc
-      n_ratio <- lst$n_ratio
-      n1 <- ifelse(calc == "n", r$n1, lst$n1)
-      n2 <- ifelse(calc == "n", r$n2, lst$n2)
-      d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
-      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
-      alt <- lst$alt
 
       str <- gettext(
         "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical effect size and the sample sizes in the design. As we increase the sample sizes, smaller effect sizes become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only larger effect sizes, smaller sample sizes are needed. The point shows the power of the specified design and effect size."
@@ -413,11 +419,18 @@ ttestISClass <- R6::R6Class(
                              pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
                              lst$pow))
 
-      ps$maxd <- pwr.t2n.test(n1 = n1, n2 = n2, power = max(0.999, power), sig.level = alpha, alternative = alt)$d
+      maxd <- try(pwr.t2n.test(n1 = n1, n2 = n2, power = max(0.999, power), sig.level = alpha, alternative = alt)$d)
+      if (inherits(maxd, "try-error")) {
+        maxd <- d
+      }
 
-      dd <- seq(ps$mind, ps$maxd, len = ps$curve.n)
+      dd <- seq(ps$mind, maxd, len = ps$curve.n)
 
-      y <- pwr.t2n.test(n1 = n1, n2 = n2, d = dd, sig.level = alpha, alternative = alt)$power
+      y <- try(pwr.t2n.test(n1 = n1, n2 = n2, d = dd, sig.level = alpha, alternative = alt)$power)
+      if(inherits(y, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the power curve. Try to enter less extreme values for the parameters"))
+        return()
+      }
       cols <- ps$pal(ps$pow.n.levels)
       yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
@@ -454,13 +467,13 @@ ttestISClass <- R6::R6Class(
       )
 
       if (alt == "two.sided") {
-        tail_text <- "two-sided"
-        alt_text <- "|<i>\u03B4</i>|<i>\u003E</i>"
-        crit_text <- "criteria"
+        tail_text <- gettext("two-sided")
+        alt_text <- gettext("|<i>\u03B4</i>|<i>\u003E</i>")
+        crit_text <- gettext("criteria")
       } else {
-        tail_text <- "one-sided"
-        alt_text <- "|<i>\u03B4</i>|<i>\u003E</i>"
-        crit_text <- "criterion"
+        tail_text <- gettext("one-sided")
+        alt_text <- gettext("|<i>\u03B4</i>|<i>\u003E</i>")
+        crit_text <- gettext("criterion")
       }
 
       if (calc == "power") {
@@ -469,7 +482,9 @@ ttestISClass <- R6::R6Class(
         pwr_string <- gettextf("only be sufficiently sensitive (power >%1$s)", round(power, 3))
       }
 
-      d50 <- pwr.t2n.test(n1 = n1, n2 = n2, sig.level = alpha, power = .5, alternative = alt)$d
+      d50 <- try(pwr.t2n.test(n1 = n1, n2 = n2, sig.level = alpha, power = .5, alternative = alt)$d)
+      if (inherits(d50, "try-error"))
+        return()
 
       str <- gettextf(
         "<p>The power curve above shows how the sensitivity of the test and design is larger for larger effect sizes. If we obtained %1$s our test and design would %2$s to effect sizes of %3$s%4$s. <p>We would be more than likely to miss (power less than 50%%) effect sizes less than <i>%5$s=</i>%6$s.",
@@ -513,17 +528,19 @@ ttestISClass <- R6::R6Class(
                              pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
                              lst$pow))
 
-      maxn <- pwr.t2n.ratio(
+      maxn <- try(pwr.t2n.ratio(
         n_ratio = n_ratio,
         power = max(0.99999, power),
         d = d,
         sig.level = alpha,
         alternative = alt
-      )
+      ))
 
-      if (n1 >= maxn && n1 >= ps$maxn)
+      if(inherits(maxn, "try-error")) {
+        maxn <- n1
+      } else if (n1 >= maxn && n1 >= ps$maxn) {
         maxn <- ceiling(n1 * ps$max.scale)
-
+      }
 
       minn <- ifelse(n_ratio < 1,
         max(ceiling(3 / (1 + n_ratio)), 2 / n_ratio),
@@ -532,11 +549,15 @@ ttestISClass <- R6::R6Class(
 
       nn <- seq(minn, maxn)
 
-      y <- pwr.t2n.test(
+      y <- try(pwr.t2n.test(
         n1 = nn,
         n2 = ceiling(nn * lst$n_ratio),
         d = d, sig.level = alpha, alternative = alt
-      )$power
+      )$power)
+      if(inherits(y, "try-error")) {
+        image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the 'Power Curve by N' plot. Try to enter less extreme values for the parameters"))
+        return()
+      }
 
       cols <- ps$pal(ps$pow.n.levels)
       yrect <- seq(0, 1, 1 / ps$pow.n.levels)
@@ -573,9 +594,13 @@ ttestISClass <- R6::R6Class(
       n1 <- ifelse(calc == "n", r$n1, lst$n1)
       n2 <- ifelse(calc == "n", r$n2, lst$n2)
       d <- ifelse(calc == "es", r$es, lst$es)
-      power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
       effN <- n1 * n2 / (n1 + n2)
       df <- n1 + n2 - 2
@@ -648,13 +673,13 @@ ttestISClass <- R6::R6Class(
       )
 
       if (alt == "two.sided") {
-        tail_text <- "two-sided"
-        alt_text <- "|<i>\u03B4</i>|<i>\u003E</i>0,"
-        crit_text <- "criteria"
+        tail_text <- gettext("two-sided")
+        alt_text <- gettext("|<i>\u03B4</i>|<i>\u003E</i>0,")
+        crit_text <- gettext("criteria")
       } else {
-        tail_text <- "one-sided"
-        alt_text <- "|<i>\u03B4</i>|<i>\u003E</i>0,"
-        crit_text <- "criterion"
+        tail_text <- gettext("one-sided")
+        alt_text <- gettext("|<i>\u03B4</i>|<i>\u003E</i>0,")
+        crit_text <- gettext("criterion")
       }
 
       str <- gettextf(
@@ -695,13 +720,13 @@ ttestISClass <- R6::R6Class(
 
       if (alt == "two.sided") {
         tail_text <- gettext("two-sided")
-        null_text <- "<i>|\u03B4|=</i>0,"
-        alt_text <- "<i>|\u03B4|\u2265</i>"
+        null_text <- gettext("<i>|\u03B4|=</i>0,")
+        alt_text <- gettext("<i>|\u03B4|\u2265</i>")
         crit_text <- gettext("criteria")
       } else {
         tail_text <- gettext("one-sided")
-        null_text <- "<i>|\u03B4|\u2264</i>0,"
-        alt_text <- "<i>|\u03B4|\u2265</i>"
+        null_text <- gettext("<i>|\u03B4|\u2264</i>0,")
+        alt_text <- gettext("<i>|\u03B4|\u2265</i>")
         crit_text <- gettext("criterion")
       }
 
@@ -711,7 +736,7 @@ ttestISClass <- R6::R6Class(
                  "|\u03B4|", "|\u03B4|", d),
         gettextf("Both assume %1$s.", n_text),
         "</p><p>",
-        gettextf("The vertical dashed lines show the %1$s we would set for a %2$s test with <i>α=</i>%3$s.", crit_text, tail_text, alpha),
+        gettextf("The vertical dashed lines show the %1$s we would set for a %2$s test with <i>\u03B1=</i>%3$s.", crit_text, tail_text, alpha),
         gettextf("When the observed effect size is far enough away from 0 to be more extreme than the %1$s we say we 'reject' the null hypothesis.", crit_text),
         gettextf("If the null hypothesis were true and %1$s the evidence would lead us to wrongly reject the null hypothesis at most %2$s%% of the time.", null_text, 100 * alpha),
         "</p><p>",

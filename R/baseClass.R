@@ -1,5 +1,5 @@
-tTestBaseClass <- R6::R6Class(
-  "tTestBaseClass",
+baseClass <- R6::R6Class(
+  "baseClass",
   inherit = basicShimClass,
   private = list(
     .check = function () {
