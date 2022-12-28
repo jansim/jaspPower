@@ -47,7 +47,7 @@ Form
 	{
 		expanded: true
     visible: test.currentValue !== 'anova'
-		title: qsTr("Parameters (t-tests)")
+		title: qsTr("Parameters")
 
     Group
 		{
@@ -73,7 +73,7 @@ Form
 
         Text {
           text: qsTr("Direction of the effect:")
-          visible: (test.currentIndex == 4 || test.currentIndex == 5 || test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
+          visible: (test.currentIndex == 4 || test.currentIndex == 5 || test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2 && alt.value == "two.sided"
           enabled: calc.currentIndex == 2
         }
 				DropDown 
@@ -81,7 +81,7 @@ Form
           id: direction
           name: "directionOfEffect"
           label: qsTr("")
-          visible: (test.currentIndex == 4 || test.currentIndex == 5 || test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2
+          visible: (test.currentIndex == 4 || test.currentIndex == 5 || test.currentIndex == 6 || test.currentIndex == 7) && calc.currentIndex == 2 && alt.value == "two.sided"
           enabled: calc.currentIndex == 2
           values: [
             { label: (test.currentIndex == 4 || test.currentIndex == 5) ? ((test.currentIndex == 4) ? qsTr("p\u2081 > p\u2080") : qsTr("p\u2081 > p\u2082")) : qsTr("\u03C1 > 1"), value: "greater"},
@@ -141,7 +141,7 @@ Form
 				DoubleField {
           id: rho
           name: "rho"
-          label: (test.currentIndex == 7) ? qsTr("\u03C1 (\u03C3\u2081\u00B2/\u03C3\u2082\u00B2)") : qsTr("\u03C1 (\u03C3\u2081\u00B2/\u03C3\u2080\u00B2)")
+          label: (test.currentIndex == 7) ? qsTr("\u03C1 (\u03C3\u2081\u00B2/\u03C3\u2082\u00B2)") : qsTr("\u03C1 (\u03C3\u00B2/\u03C3\u2080\u00B2)")
           defaultValue: 2
           visible: test.currentIndex == 6 || test.currentIndex == 7
           enabled: calc.currentIndex != 2
@@ -159,6 +159,15 @@ Form
           max: 0.999
           defaultValue: 0.9
           enabled: calc.currentIndex != 1
+        }
+
+        Text { text: qsTr("Type I error rate:") }
+				DoubleField {
+          id: alpha
+          name: "alpha"
+          label: qsTr("α")
+          min: 0
+          defaultValue: 0.05
         }
 
         // No groups in single sample t-test
@@ -179,15 +188,6 @@ Form
           min: 2
           defaultValue: 20
           enabled: calc.currentIndex != 0
-        }
-
-        Text { text: qsTr("Type I error rate:") }
-				DoubleField {
-          id: alpha
-          name: "alpha"
-          label: qsTr("α")
-          min: 0
-          defaultValue: 0.05
         }
 
         // No sample size ratio in single sample t-test
@@ -233,19 +233,7 @@ Form
   Section
 	{
 		expanded: true
-		title: qsTr("Display")
-
-    DropDown
-        {
-          name: "esType"
-          id:   esType
-          indexDefaultValue: 0
-          label: qsTr("Effect size type")
-          values: [
-            { label: "Cohen's h", value: "h"}
-          ]
-          visible: false
-        }
+		title: qsTr("Plots")
 
     CheckBox {
       label: qsTr("Power contour plot")
@@ -281,5 +269,103 @@ Form
       name: "text"
       checked: true
     }
+  }
+  Section
+  {
+    expanded: true
+		title: qsTr("Data Generation")
+
+	  Group
+	  {
+		  id:	parameters
+      visible: test.currentIndex != 4 && test.currentIndex != 5
+      columns: 2
+
+      Group
+      {
+        title: qsTr("Parameters")
+        DoubleField
+        {
+          name: "firstGroupMean"
+          label: test.currentIndex == 6 ? qsTr("\u0078\u0305") : qsTr("\u0078\u0305\u2081")
+          defaultValue: 0
+          visible: test.currentIndex == 6 || test.currentIndex == 7
+        }
+
+        DoubleField
+        {
+          name: "secondGroupMean"
+          label: qsTr("\u0078\u0305\u2082")
+          defaultValue: 0
+          visible: test.currentIndex == 0 || test.currentIndex == 1 || test.currentIndex == 7
+        }
+
+        DoubleField
+        {
+          name: "testValue"
+          label: qsTr("\u03BC\u2080")
+          defaultValue: 0
+          visible: test.currentIndex == 2 || test.currentIndex == 3
+        }
+
+        DoubleField
+        {
+          name: "firstGroupSd"
+          label: (test.currentIndex == 2) ? qsTr("s") : qsTr("s\u2081")
+          defaultValue: 1
+          visible: test.currentIndex == 0 || test.currentIndex == 1 || test.currentIndex == 2
+        }
+
+        DoubleField
+        {
+          name: "populationSd"
+          label: test.currentIndex == 3 ? qsTr("\u03C3") : qsTr("\u03C3\u2080")
+          defaultValue: 1
+          visible: test.currentIndex == 3 || test.currentIndex == 6
+        }
+
+        DoubleField
+        {
+          name: "secondGroupSd"
+          label: qsTr("s\u2082")
+          defaultValue: 1
+          visible: test.currentIndex == 0 || test.currentIndex == 1 || test.currentIndex == 7
+        }
+      }
+
+      RadioButtonGroup
+      {
+        name: "effectDirection"
+        title: qsTr("Effect direction")
+        visible: test.currentIndex != 6 && test.currentIndex != 7
+        RadioButton { value: "less"; label: (test.currentIndex == 2 || test.currentIndex == 3) ? qsTr("\u0078\u0305 < \u03BC\u2080") : qsTr("\u0078\u0305\u2081 < \u0078\u0305\u2082"); checked: true }
+        RadioButton { value: "greater"; label: (test.currentIndex == 2 || test.currentIndex == 3) ? qsTr("\u0078\u0305 > \u03BC\u2080") : qsTr("\u0078\u0305\u2081 > \u0078\u0305\u2082") }
+      }
+    }
+
+    Group
+    {
+      title: qsTr("Export synthetic dataset")
+		  FileSelector
+		  {
+			  id:						    savePath
+			  name:					    "savePath"
+			  label:				    qsTr("Save as")
+			  placeholderText:	qsTr("e.g., location/power.csv")
+			  filter:					  "*.csv"
+			  save:					    true
+			  fieldWidth:				180 * preferencesModel.uiScale
+		  }
+
+		  CheckBox
+		  {
+			  id:						saveDataset
+			  name:					"saveDataset"
+			  text:					qsTr("Save generated dataset")
+			  enabled:			savePath.value != ""
+			  Layout.leftMargin:  10 * preferencesModel.uiScale
+		  }
+    }
+    SetSeed{}	  
   }
 }

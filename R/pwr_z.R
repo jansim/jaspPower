@@ -705,6 +705,152 @@ ztestOneSClass <- R6::R6Class(
 
       state = list(curves = curves, rect = rect, lims = lims)
       image$plotObject <- private$.powerDist(state = state, ggtheme = pwr_plot_theme())
+    },
+
+    #### Generate synthetic dataset ----
+    .generateDataset = function(r, lst) {
+
+      datasetContainer <- self$jaspResults[["datasetcont"]]
+      if (is.null(datasetContainer)) {
+        # Create Container if it doesn't exist yet
+        datasetContainer <- createJaspContainer(title = gettext("Synthetic Dataset"))
+        datasetContainer$dependOn(c(
+          "test",
+          "p0",
+          "p1",
+          "es",
+          "directionOfEffect",
+          "power",
+          "n",
+          "alt",
+          "alpha",
+          "calc",
+          "n_ratio",
+          "savePath",
+          "firstGroupMean",
+          "secondGroupMean",
+          "firstGroupSd",
+          "secondGroupSd",
+          "populationSd",
+          "effectDirection",
+          "testValue",
+          "setSeed",
+          "seed"
+        ))
+        datasetContainer$position <- 12
+        self$jaspResults[["datasetcont"]] <- datasetContainer
+
+        generatedDataset     <- createJaspState()
+        characteristicsTable <- createJaspTable(title = gettext("Characteristics"))
+        powerTable           <- createJaspTable(gettext("Post Hoc Power Analysis"))
+
+      } else {
+        return()
+      }
+
+      #Generate dataset
+      if(!grepl(".csv", self$options[["savePath"]], fixed = TRUE) && !grepl(".txt", self$options[["savePath"]], fixed = TRUE))
+        .quitAnalysis(gettext("The generated dataset must be saved as a .csv or .txt file."))
+
+      calc <- self$options$calc
+
+      n <- ifelse(calc == "n", r$n, lst$n)
+      d <- ifelse(calc == "es", r$es, lst$es)
+      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
+      alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr::pwr.norm.test(n = n, d = d, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
+
+      sd_1 <- self$options[["firstGroupSd"]]
+      test_value <- self$options[["testValue"]]
+
+      if(self$options[["effectDirection"]] == "less") {
+        mean_1 <- test_value - d * sd_1
+        if(alt == "greater")
+          alt <- "less"
+      } else {
+        mean_1 <- test_value + d * sd_1
+        if(alt == "greater")
+          alt <- "greater"
+      }
+
+      if(self$options[["setSeed"]])
+        set.seed(self$options[["seed"]])
+
+      group_1 <- rnorm(n, mean = 0, sd = sd_1)
+      group_1 <- group_1 - mean(group_1)
+      group_1 <- group_1 * (sd_1 / sd(group_1))
+      group_1 <- group_1 + mean_1
+
+      id        <- seq.int(1, n)
+      dependent <- group_1
+
+      dataset <- data.frame(cbind(id, dependent))
+
+      csv <- try(write.csv(dataset, self$options[["savePath"]], row.names = FALSE))
+      if(inherits(csv, "try-error"))
+        .quitAnalysis(gettext("The generated dataset could not be saved. Please make sure that the specified path exists and the specified csv file is closed."))
+
+      generatedDataset <- dataset
+
+      datasetContainer[["generatedData"]] <- generatedDataset
+
+      #Characteristics tab
+      colNames <- c("n", "mean", "testValue", "s")
+      colLabels <- c(
+        gettext("N"),
+        gettext("\u0078\u0305"),
+        gettext("\u03BC\u2080"),
+        gettext("s")
+      )
+      colType <- c("integer", "number", "number", "number")
+
+      for (i in seq_along(colNames)) {
+        characteristicsTable$addColumnInfo(colNames[i],
+                                           title = colLabels[i],
+                                           type = colType[i]
+        )
+      }
+
+      characteristicsTable[["n"]]          <- n
+      characteristicsTable[["mean"]]       <- mean_1
+      characteristicsTable[["testValue"]]  <- test_value
+      characteristicsTable[["s"]]          <- sd_1
+      characteristicsTable$addFootnote(gettextf("The synthetic dataset is saved as %s", self$options[["savePath"]]))
+
+      datasetContainer[["characteristics"]] <- characteristicsTable
+
+      #Post hoc power tab
+      colNames <- c("es", "alt", "power", "alpha")
+      colLabels <- c(
+        gettext("Cohen's |\u03B4|"),
+        "Alternative hypothesis",
+        gettext("Power"),
+        "\u03B1"
+      )
+      colType <- c("number", "string", "number", "number")
+
+      for (i in seq_along(colNames)) {
+        powerTable$addColumnInfo(colNames[i],
+                                 title = colLabels[i],
+                                 type = colType[i]
+        )
+      }
+
+      powerTable[["es"]]     <- d
+      powerTable[["alt"]]    <- switch(alt,
+                                       "two.sided" = "Two-sided",
+                                       "less" = "Less (One-sided)",
+                                       "greater" = "Greater (One-sided)"
+      )
+      powerTable[["power"]] <- power
+      powerTable[["alpha"]] <- alpha
+
+      datasetContainer[["posthocpower"]] <- powerTable
+
     }
   )
 )

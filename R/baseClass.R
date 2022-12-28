@@ -137,6 +137,9 @@ baseClass <- R6::R6Class(
           private$.populateDistText(results, stats)
         }
       }
+      if (self$options$saveDataset && self$options$savePath != "") {
+        private$.generateDataset(results, stats)
+      }
     },
 
     # ==== Functions to Populate Text ====

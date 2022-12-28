@@ -670,9 +670,13 @@ test2PClass <- R6::R6Class(
       p0 <- lst$p0
       if(calc == "es") p1 <- ifelse(lst$alt == "two.sided" && self$options$directionOfEffect == "less", r$p1[2], r$p1[1]) else p1 <- lst$p1
       d <- abs(2 * (asin(sqrt(p1)) - asin(sqrt(p0))))
-      power <- ifelse(calc == "power", r$power, lst$pow)
       alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
       alt <- lst$alt
+      power <- ifelse(calc == "power",
+                      r$power,
+                      ifelse(calc == "n",
+                             pwr.2p2n.test(n = n1, n.ratio = n_ratio, p0 = p0, p1 = p1, sig.level = alpha, alternative = alt)$power,
+                             lst$pow))
 
 
       effN <- n1 * n2 / (n1 + n2)
@@ -828,6 +832,148 @@ test2PClass <- R6::R6Class(
 
 
       html[["text"]] <- str
+    },
+
+    #### Generate synthetic dataset ----
+    .generateDataset = function(r, lst) {
+      datasetContainer <- self$jaspResults[["datasetcont"]]
+      if (is.null(datasetContainer)) {
+        # Create Container if it doesn't exist yet
+        datasetContainer <- createJaspContainer(title = gettext("Synthetic Dataset"))
+        datasetContainer$dependOn(c(
+          "test",
+          "p0",
+          "p1",
+          "es",
+          "directionOfEffect",
+          "power",
+          "n",
+          "alt",
+          "alpha",
+          "calc",
+          "n_ratio",
+          "savePath",
+          "firstGroupMean",
+          "secondGroupMean",
+          "firstGroupSd",
+          "secondGroupSd",
+          "populationSd",
+          "effectDirection",
+          "testValue",
+          "setSeed",
+          "seed"
+        ))
+        datasetContainer$position <- 12
+        self$jaspResults[["datasetcont"]] <- datasetContainer
+
+        generatedDataset     <- createJaspState()
+        characteristicsTable <- createJaspTable(title = gettext("Characteristics"))
+        powerTable           <- createJaspTable(gettext("Post Hoc Power Analysis"))
+
+      } else {
+        return()
+      }
+
+      #Generate dataset
+      if(!grepl(".csv", self$options[["savePath"]], fixed = TRUE) && !grepl(".txt", self$options[["savePath"]], fixed = TRUE))
+        .quitAnalysis(gettext("The generated dataset must be saved as a .csv or .txt file."))
+
+      calc <- self$options$calc
+
+      n_ratio <- lst$n_ratio
+      n1 <- ifelse(calc == "n", r$n1, lst$n1)
+      n2 <- ifelse(calc == "n", r$n2, lst$n2)
+      p0 <- lst$p0
+      if(calc == "es") p1 <- ifelse(lst$alt == "two.sided" && self$options$directionOfEffect == "less", r$p1[2], r$p1[1]) else p1 <- lst$p1
+      if(p1 < p0) {
+        p1 <- floor(p1 * n1) / n1
+        p0 <- ceiling(p0 * n2) / n2
+      } else {
+        p1 <- ceiling(p1 * n1) / n1
+        p0 <- floor(p0 * n2) / n2
+      }
+      d  <- abs(2 * (asin(sqrt(p1)) - asin(sqrt(p0))))
+      alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
+      alt <- lst$alt
+      power <- pwr.2p2n.test(n = n1, n.ratio = n_ratio, p0 = p0, p1 = p1, sig.level = alpha, alternative = alt)$power
+
+      if(self$options[["setSeed"]])
+        set.seed(self$options[["seed"]])
+
+      sample_indices_1 <- sample(x = seq(n1), size = p1 * n1, replace = FALSE)
+      sample_indices_2 <- sample(x = seq(n2), size = p0 * n2, replace = FALSE)
+
+
+      id        <- seq(n1 + n2)
+      group_1 <- rep(0, n1)
+      group_1[sample_indices_1] <- 1
+      group_2 <- rep(0, n2)
+      group_2[sample_indices_2] <- 1
+      dependent <- c(group_1, group_2)
+      group <- c(rep(1, n1), rep(2, n2))
+
+      dataset <- data.frame(cbind(id, dependent, group))
+
+      csv <- try(write.csv(dataset, self$options[["savePath"]], row.names = FALSE))
+      if(inherits(csv, "try-error"))
+        .quitAnalysis(gettext("The generated dataset could not be saved. Please make sure that the specified path exists and the specified csv file is closed."))
+
+      generatedDataset <- dataset
+
+      datasetContainer[["generatedData"]] <- generatedDataset
+
+      #Characteristics tab
+      colNames <- c("n1", "n2", "p1", "p2")
+      colLabels <- c(
+        "N\u2081",
+        "N\u2082",
+        gettext("p\u2081"),
+        gettext("p\u2082")
+      )
+      colType <- c("integer", "integer", "number", "number")
+
+      for (i in seq_along(colNames)) {
+        characteristicsTable$addColumnInfo(colNames[i],
+                                           title = colLabels[i],
+                                           type = colType[i]
+        )
+      }
+
+      characteristicsTable[["n1"]]    <- n1
+      characteristicsTable[["n2"]]    <- n2
+      characteristicsTable[["p1"]]    <- p1
+      characteristicsTable[["p2"]]    <- p0
+      characteristicsTable$addFootnote(gettextf("The synthetic dataset is saved as %s", self$options[["savePath"]]))
+
+      datasetContainer[["characteristics"]] <- characteristicsTable
+
+      #Post hoc power tab
+      colNames <- c("es", "alt", "power", "alpha")
+      colLabels <- c(
+        gettext("Cohen's |<i>h</i>|"),
+        "Alternative hypothesis",
+        gettext("Power"),
+        "\u03B1"
+      )
+      colType <- c("number", "string", "number", "number")
+
+      for (i in seq_along(colNames)) {
+        powerTable$addColumnInfo(colNames[i],
+                                 title = colLabels[i],
+                                 type = colType[i]
+        )
+      }
+
+      powerTable[["es"]]    <- d
+      powerTable[["alt"]]   <- switch(alt,
+                                      "two.sided" = "Two-sided",
+                                      "less" = "Less (One-sided)",
+                                      "greater" = "Greater (One-sided)"
+      )
+      powerTable[["power"]] <- power
+      powerTable[["alpha"]] <- alpha
+
+      datasetContainer[["posthocpower"]] <- powerTable
     }
   )
 )
