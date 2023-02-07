@@ -1,12 +1,13 @@
 # Originally based on https://github.com/richarddmorey/jpower
 
-.runTest1Pois = function(jaspResults, options) {
+.runTest1Pois <- function(jaspResults, options) {
   stats <- .prepareStats(jaspResults, options)
 
   ## Compute results
   results <- try(.computeTest1Pois(jaspResults, options, stats))
-  if(inherits(results, "try-error"))
+  if (inherits(results, "try-error")) {
     .quitAnalysis(gettext("Unable to compute the power results. Try to enter less extreme values for the input parameters."))
+  }
 
   .initPowerTabTest1Pois(jaspResults, options, results, stats)
 
@@ -52,7 +53,7 @@
 # probs_es = NULL #??
 
 #### Compute results ----
-.computeTest1Pois = function(jaspResults, options, stats) {
+.computeTest1Pois <- function(jaspResults, options, stats) {
   ## Compute numbers for table
   pow.n <- ceiling(pwr.pois.test(t = stats$t1, lambda0 = stats$p0, lambda1 = stats$p1, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
   pow.lambda1 <- pwr.pois.test(t = stats$t1, n = stats$n, lambda0 = stats$p0, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$lambda1
@@ -61,7 +62,8 @@
   # Calculate probs_es here to have access to stats list
   probs <- c(.5, .8, .95)
   probs_es <- sapply(probs, function(pr) {
-    pwr.pois.test(t = stats$t1,
+    pwr.pois.test(
+      t = stats$t1,
       n = stats$n, lambda0 = stats$p0, sig.level = stats$alpha, power = pr,
       alternative = stats$alt
     )$lambda1
@@ -72,7 +74,7 @@
 
 
 #### Init table ----
-.initPowerTabTest1Pois = function(results) {
+.initPowerTabTest1Pois <- function(results) {
   table <- jaspResults[["powertab"]]
   if (is.null(table)) {
     # Create table if it doesn't exist yet
@@ -107,7 +109,7 @@
     order <- c(7, 1, 2, 3, 4, 5, 6)
   }
 
-  colNames <- c("n", "t", "p0", "p1","es", "power", "alpha")
+  colNames <- c("n", "t", "p0", "p1", "es", "power", "alpha")
   colLabels <- c(
     "N",
     "t",
@@ -121,9 +123,9 @@
 
   for (i in seq_along(order)) {
     table$addColumnInfo(colNames[order[i]],
-                        title = colLabels[order[i]],
-                        overtitle = ifelse((calc == "es" && i > 2) || (calc != "es" && i > 1), gettext("User Defined"), NULL),
-                        type = colType[order[i]]
+      title = colLabels[order[i]],
+      overtitle = ifelse((calc == "es" && i > 2) || (calc != "es" && i > 1), gettext("User Defined"), NULL),
+      type = colType[order[i]]
     )
   }
 
@@ -147,7 +149,7 @@
   .populatePowerTabTest1Pois(jaspResults, options, results, stats)
 }
 
-.initPowerESTabTest1Pois = function(jaspResults, options, results, stats) {
+.initPowerESTabTest1Pois <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powerEStab"]]
   if (is.null(table)) {
     # Create table if it doesn't exist yet
@@ -205,7 +207,7 @@
 
 
 #### Populate texts ----
-.populateTabText = function(jaspResults, options, r, lst) {
+.populateTabText <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["tabText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -228,8 +230,8 @@
   n_text <- gettextf("a sample size of ", n)
 
   tail_text <- ifelse(alt == "two.sided",
-                      gettext("two-sided"),
-                      gettext("one-sided")
+    gettext("two-sided"),
+    gettext("one-sided")
   )
   d_text <- gettext("effect sizes of <i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081</i>")
 
@@ -251,12 +253,12 @@
   }
 
   hypo_text <- ifelse(alt == "two.sided",
-                      "<i>|(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081|>0</i>",
-                      ifelse(alt == "less",
-                              "<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081<0</i>",
-                              "<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081>0</i>"
-                              )
-                      )
+    "<i>|(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081|>0</i>",
+    ifelse(alt == "less",
+      "<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081<0</i>",
+      "<i>(\u03BB\u2081-\u03BB\u2080)/\u221A\u03BB\u2081>0</i>"
+    )
+  )
 
   str <- paste0(
     str,
@@ -269,7 +271,7 @@
   html[["text"]] <- str
 }
 
-.populateContourTextTest1Pois = function(jaspResults, options, r, lst) {
+.populateContourTextTest1Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["contourText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -283,8 +285,9 @@
   ## Get options from interface
   power <- ifelse(calc == "power", r$power, lst$pow)
   dType_text <- ifelse(options$esType == "h",
-                        gettext("effect size"),
-                        gettext("absolute difference in proportions"))
+    gettext("effect size"),
+    gettext("absolute difference in proportions")
+  )
 
   str <- gettextf(
     "<p>The power contour plot shows how the sensitivity of the test changes with the hypothetical effect size and the sample sizes in the design. As we increase the sample sizes, smaller effect sizes become reliably detectable.<p>Conversely, if one is satisfied to reliably detect only larger effect sizes, smaller sample sizes are needed. The solid black curve on the contour plot shows sample size/effect size combinations with a power of %s. The point shows the specified  design and %s.",
@@ -294,7 +297,7 @@
   html[["text"]] <- str
 }
 
-.populatePowerCurveESTextTest1Pois = function(jaspResults, options, r, lst) {
+.populatePowerCurveESTextTest1Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveESText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -318,11 +321,13 @@
   n_text <- gettextf("sample sizes of %s", n)
 
   dType_text <- ifelse(options$esType == "h",
-                        gettext("effect sizes"),
-                        gettext("absolute differences in proportions"))
+    gettext("effect sizes"),
+    gettext("absolute differences in proportions")
+  )
   dType_symbol <- ifelse(options$esType == "h",
-                          gettext("h"),
-                          gettext("\u0394p"))
+    gettext("h"),
+    gettext("\u0394p")
+  )
 
 
 
@@ -355,7 +360,7 @@
   html[["text"]] <- str
 }
 
-.populatePowerCurveNTextTest1Pois = function(jaspResults, options, r, lst) {
+.populatePowerCurveNTextTest1Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveNText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -399,7 +404,7 @@
   html[["text"]] <- str
 }
 
-.populateDistTextTest1Pois = function(jaspResults, options, r, lst) {
+.populateDistTextTest1Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["distText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -454,7 +459,7 @@
 
 
 #### Populate table ----
-.populatePowerTabTest1Pois = function(jaspResults, options, results, stats) {
+.populatePowerTabTest1Pois <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powertab"]]
   if (calc == "es") {
     table$addColumns(list(p1 = results[["lambda1"]]))
@@ -466,14 +471,18 @@
   }
 }
 
-.populatePowerESTabTest1Pois = function(jaspResults, options, r, lst) {
+.populatePowerESTabTest1Pois <- function(jaspResults, options, r, lst) {
   table <- jaspResults[["powerEStab"]]
 
   p0 <- options$p0
-  if(options$esType == "h") {
-    probs_es <- sapply(results$probs_es, function(prob) {2 * (asin(sqrt(prob)) - asin(sqrt(p0)))})
+  if (options$esType == "h") {
+    probs_es <- sapply(results$probs_es, function(prob) {
+      2 * (asin(sqrt(prob)) - asin(sqrt(p0)))
+    })
   } else {
-    probs_es <- sapply(results$probs_es, function (prob) {abs(prob - p0)})
+    probs_es <- sapply(results$probs_es, function(prob) {
+      abs(prob - p0)
+    })
   }
 
   dType_text <- ifelse(options$esType == "h", gettext("<i>h</i>"), gettext("|\u0394p|"))
@@ -481,7 +490,7 @@
   esText <- c(
     gettextf("0 < %s %s  %s", dType_text, "\u2264", format(round(probs_es[1], 3), nsmall = 3)),
     gettextf("%s < %s %s %s", format(round(probs_es[1], 3), nsmall = 3), dType_text, "\u2264", format(round(probs_es[2], 3), nsmall = 3)),
-    gettextf("%s < %s %s %s",format(round(probs_es[2], 3), nsmall = 3), dType_text, "\u2264", format(round(probs_es[3], 3), nsmall = 3)),
+    gettextf("%s < %s %s %s", format(round(probs_es[2], 3), nsmall = 3), dType_text, "\u2264", format(round(probs_es[3], 3), nsmall = 3)),
     gettextf("%s %s %s", dType_text, "\u2265", format(round(probs_es[3], 3), nsmall = 3))
   )
 
@@ -491,10 +500,10 @@
 
 
 #### Plot functions ----
-.preparePowerContourTest1Pois = function(jaspResults, options, r, lst) {
+.preparePowerContourTest1Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerContour"]]
   if (is.null(image)) {
-    image <- createJaspPlot(title=gettext("Power Contour"), width=400, height=350)
+    image <- createJaspPlot(title = gettext("Power Contour"), width = 400, height = 350)
     image$dependOn(c(
       "test",
       "p0",
@@ -513,8 +522,9 @@
   }
 
   ps <- ttestPlotSettings
-  if(options$esType != "h")
+  if (options$esType != "h") {
     ps$maxd <- 1 - p0
+  }
 
   calc <- options$calc
 
@@ -542,8 +552,8 @@
 
   nn <- unique(ceiling(exp(seq(log(minn), log(maxn), len = ps$lens)) - .001))
   dd <- seq(ps$mind, ps$maxd, len = ps$lens)
-  if(options$esType == "h"){
-    pp <- sin(0.5*dd + asin(sqrt(p0)))^2
+  if (options$esType == "h") {
+    pp <- sin(0.5 * dd + asin(sqrt(p0)))^2
   } else {
     if (alt != "less") {
       pp <- p0 + dd
@@ -557,14 +567,14 @@
   })
 
   z.delta <- sapply(nn, function(N) {
-    if(options$esType == "h") {
+    if (options$esType == "h") {
       2 * (asin(sqrt(pwr.pois.test(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1)) - asin(sqrt(p0)))
     } else {
       abs(pwr.pois.test(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1 - p0)
     }
   })
 
-  state = list(
+  state <- list(
     z.pwr = z.pwr,
     z.delta = z.delta,
     ps = ps,
@@ -580,7 +590,7 @@
   image$plotObject <- .powerContour(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
 
-.preparePowerCurveESTest1Pois = function(jaspResults, options, r, lst) {
+.preparePowerCurveESTest1Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveES"]]
   if (is.null(image)) {
     image <- createJaspPlot(
@@ -606,8 +616,9 @@
   }
 
   ps <- ttestPlotSettings
-  if(options$esType != "h")
+  if (options$esType != "h") {
     ps$maxd <- 1 - p0
+  }
 
   calc <- options$calc
 
@@ -621,8 +632,8 @@
   alt <- lst$alt
 
   dd <- seq(ps$mind, ps$maxd, len = ps$curve.n)
-  if(options$esType == "h"){
-    pp <- sin(0.5*dd + asin(sqrt(p0)))^2
+  if (options$esType == "h") {
+    pp <- sin(0.5 * dd + asin(sqrt(p0)))^2
   } else {
     if (alt != "less") {
       pp <- p0 + dd
@@ -635,11 +646,11 @@
   cols <- ps$pal(ps$pow.n.levels)
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
-  state = list(cols = cols, dd = dd, y = y, yrect = yrect, n = n, alpha = alpha, delta = d, pow = power)
+  state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n = n, alpha = alpha, delta = d, pow = power)
   image$plotObject <- .powerCurveES(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
 
-.preparePowerCurveNTest1Pois = function(jaspResults, options, r, lst) {
+.preparePowerCurveNTest1Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveN"]]
   if (is.null(image)) {
     image <- createJaspPlot(
@@ -667,8 +678,9 @@
   calc <- options$calc
 
   ps <- ttestPlotSettings
-  if(options$esType != "h")
+  if (options$esType != "h") {
     ps$maxd <- 1 - p0
+  }
 
   n <- ifelse(calc == "n", r$n, lst$n)
   t <- lst$t1
@@ -699,7 +711,7 @@
     ylim = c(0, 1)
   )
 
-  state = list(
+  state <- list(
     n = n,
     cols = cols,
     nn = nn,
@@ -713,7 +725,7 @@
   image$plotObject <- .powerCurveN(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
 
-.preparePowerDistTest1Pois = function(jaspResults, options, r, lst) {
+.preparePowerDistTest1Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
   if (is.null(image)) {
     image <- createJaspPlot(
@@ -794,6 +806,6 @@
     ylim = c(0, y.max * 1.1)
   )
 
-  state = list(curves = curves, rect = rect, lims = lims)
+  state <- list(curves = curves, rect = rect, lims = lims)
   image$plotObject <- .powerDist(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }

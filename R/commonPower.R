@@ -1,13 +1,14 @@
-.check = function(jaspResults, options) {
+.check <- function(jaspResults, options) {
   alternative <- options$alternative
   d <- ifelse(options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio", options$varianceRatio, options$effectSize)
   p0 <- options$baselineProportion
   p1 <- options$comparisonProportion
   # Check whether the provided effect size is valid
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-      options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
-    if (d == 0)
+    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
+    if (d == 0) {
       .quitAnalysis(gettext("Effect size can't be 0."))
+    }
   } else if (options$test == "oneSampleProportion" && options$calculation != "effectSize") {
     if (alternative == "twoSided") {
       if (p1 == p0) {
@@ -60,10 +61,11 @@
 }
 
 #### Init + run functions ----
-.prepareStats = function(jaspResults, options) {
+.prepareStats <- function(jaspResults, options) {
   ## Get options from interface
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio")
+  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
     options$effectSize <- options$varianceRatio
+  }
 
   n <- options$sampleSize
   n_ratio <- options$sampleSizeRatio
@@ -91,14 +93,15 @@
     n_ratio = n_ratio,
     pow = pow,
     alt = switch(alt,
-                  "twoSided" = "two.sided",
-                  alt),
+      "twoSided" = "two.sided",
+      alt
+    ),
     alpha = alpha
   )
 }
 
 # ==== Functions to Populate Text ====
-.populateIntro = function(jaspResults, options) {
+.populateIntro <- function(jaspResults, options) {
   calc <- options$calculation
 
   html <- jaspResults[["intro"]]
@@ -152,7 +155,7 @@
 }
 
 # ==== Plotting Functions ====
-.powerContour = function(jaspResults, options, state, ggtheme, ...) {
+.powerContour <- function(jaspResults, options, state, ggtheme, ...) {
   calc <- options$calculation
 
   z.delta <- state$z.delta
@@ -179,12 +182,15 @@
     n <- n1
   }
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-        options$test == "oneSampleTTest" || options$test == "oneSampleZTest")
+    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
     es <- "|\u03B4|"
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion")
+  }
+  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
     es <- "|h|"
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio")
+  }
+  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
     es <- "\u03C1"
+  }
 
 
   # If group sizes differ, provide a secondary axis
@@ -240,7 +246,7 @@
   return(p)
 }
 
-.powerCurveES = function(jaspResults, options, state, ggtheme, ...) {
+.powerCurveES <- function(jaspResults, options, state, ggtheme, ...) {
   y <- state$y
   cols <- state$cols
   yrect <- state$yrect
@@ -253,12 +259,15 @@
   delta <- state$delta
 
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-      options$test == "oneSampleTTest" || options$test == "oneSampleZTest")
+    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
     es <- "|\u03B4|"
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion")
+  }
+  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
     es <- "|h|"
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio")
+  }
+  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
     es <- "\u03C1"
+  }
 
   ps <- ttestPlotSettings
 
@@ -304,7 +313,7 @@
   return(p)
 }
 
-.powerCurveN = function(jaspResults, options, state, ggtheme, ...) {
+.powerCurveN <- function(jaspResults, options, state, ggtheme, ...) {
   cols <- state$cols
   yrect <- state$yrect
   lims <- state$lims
@@ -317,12 +326,15 @@
   y <- state$y
 
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-      options$test == "oneSampleTTest" || options$test == "oneSampleZTest")
+    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
     es <- "|\u03B4|"
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion")
+  }
+  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
     es <- "|h|"
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio")
+  }
+  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
     es <- "\u03C1"
+  }
 
   ps <- ttestPlotSettings
 
@@ -331,7 +343,7 @@
     plot_subtitle <- gettextf("%s = %s, %s = %s", es, round(delta, 3), "\u03B1", alpha)
   } else {
     # Indipendent Samples
-    plot_subtitle <- gettextf("%s = %s, N%s = %s %s N%s, %s = %s", es, round(delta, 3),"\u2082", n_ratio, "\u00D7", "\u2081", "\u03B1", alpha)
+    plot_subtitle <- gettextf("%s = %s, N%s = %s %s N%s, %s = %s", es, round(delta, 3), "\u2082", n_ratio, "\u00D7", "\u2081", "\u03B1", alpha)
   }
 
   # Creat basic plot
@@ -366,14 +378,17 @@
   return(p)
 }
 
-.powerDist = function(jaspResults, options, state, ggtheme, ...) {
+.powerDist <- function(jaspResults, options, state, ggtheme, ...) {
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-      options$test == "oneSampleTTest" || options$test == "oneSampleZTest")
+    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
     es <- "|\u03B4|"
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion")
+  }
+  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
     es <- "|h|"
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio")
+  }
+  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
     es <- ifelse(state$d < 1, "1/\u03C1", "\u03C1")
+  }
 
   ps <- ttestPlotSettings
 

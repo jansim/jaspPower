@@ -1,12 +1,13 @@
 # Originally based on https://github.com/richarddmorey/jpower
 
-.runTest2Pois = function(jaspResults, options) {
+.runTest2Pois <- function(jaspResults, options) {
   stats <- .prepareStats(jaspResults, options)
 
   ## Compute results
   results <- try(.computeTest2Pois(jaspResults, options, stats))
-  if(inherits(results, "try-error"))
+  if (inherits(results, "try-error")) {
     .quitAnalysis(gettext("Unable to compute the power results. Try to enter less extreme values for the input parameters."))
+  }
 
   .initPowerTabTest2Pois(jaspResults, options, results, stats)
 
@@ -48,9 +49,7 @@
   }
 }
 
-.computeTest2Pois = function(jaspResults, options, stats) {
-
-
+.computeTest2Pois <- function(jaspResults, options, stats) {
   ## Compute numbers for table
   pow.n <- try(ceiling(pwr.2pois2n.test(n_ratio = stats$n_ratio, lambda2 = stats$p0, lambda1 = stats$p1, t1 = stats$t1, t2 = stats$t2, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n1), silent = TRUE)
   pow.lambda1 <- try(pwr.2pois2n.test(n1 = stats$n1, n.ratio = stats$n_ratio, lambda2 = stats$p0, t1 = stats$t1, t2 = stats$t2, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$lambda1, silent = TRUE)
@@ -69,7 +68,7 @@
 }
 
 #### Init table ----
-.initPowerTabTest2Pois = function(results) {
+.initPowerTabTest2Pois <- function(results) {
   table <- jaspResults[["powertab"]]
 
   if (is.null(table)) {
@@ -121,13 +120,13 @@
 
   for (i in seq_along(order)) {
     table$addColumnInfo(colNames[order[i]],
-                        title = colLabels[order[i]],
-                        overtitle = if (((calc == "n" || calc == "es") && i > 2) || ((calc != "n" && calc != "es") && i > 1)) "User Defined" else NULL,
-                        type = colType[order[i]]
+      title = colLabels[order[i]],
+      overtitle = if (((calc == "n" || calc == "es") && i > 2) || ((calc != "n" && calc != "es") && i > 1)) "User Defined" else NULL,
+      type = colType[order[i]]
     )
   }
 
-  options$es <- p1/p0
+  options$es <- p1 / p0
 
   row <- list()
   for (i in 2:length(order)) {
@@ -143,7 +142,7 @@
 
   .populatePowerTabTest2Pois(results)
 }
-.initPowerESTabTest2Pois = function(jaspResults, options, results, stats) {
+.initPowerESTabTest2Pois <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powerEStab"]]
 
   if (is.null(table)) {
@@ -199,7 +198,7 @@
 
   .populatePowerESTabTest2Pois(jaspResults, options, results, stats)
 }
-.populatePowerESTabTest2Pois = function(jaspResults, options, r, lst) {
+.populatePowerESTabTest2Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["tabText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -226,12 +225,12 @@
   alt <- lst$alt
 
   n_text <- ifelse(n1 == n2,
-                    gettextf("a sample size of %s in each group ", n1),
-                    gettextf("group sample sizes of %s and %s respectively, ", n1, n2)
+    gettextf("a sample size of %s in each group ", n1),
+    gettextf("group sample sizes of %s and %s respectively, ", n1, n2)
   )
   tail_text <- ifelse(alt == "two.sided",
-                      "two-sided",
-                      "one-sided"
+    "two-sided",
+    "one-sided"
   )
 
   print("===> pre-calc")
@@ -266,12 +265,11 @@
   }
 
   hypo_text <- ifelse(alt == "less",
-                      "<i>\u03BB\u2081/\u03BB\u2082</i><<i>1</i>",
-                      ifelse(alt == "greater",
-                              "<i>\u03BB\u2081/\u03BB\u2082</i>><i>1</i>",
-                              "<i>\u03BB\u2081/\u03BB\u2082</i>\u2260<i>1</i>"
-                              )
-
+    "<i>\u03BB\u2081/\u03BB\u2082</i><<i>1</i>",
+    ifelse(alt == "greater",
+      "<i>\u03BB\u2081/\u03BB\u2082</i>><i>1</i>",
+      "<i>\u03BB\u2081/\u03BB\u2082</i>\u2260<i>1</i>"
+    )
   )
 
   str <- paste0(
@@ -287,7 +285,7 @@
   esText <- c(
     gettextf("0 < %s %s  %s", "\u03BB\u2081/\u03BB\u2082", "\u2264", format(round(probs_es[1], 3), nsmall = 3)),
     gettextf("%s < %s %s %s", format(round(probs_es[1], 3), nsmall = 3), "\u03BB\u2081/\u03BB\u2082", "\u2264", format(round(probs_es[2], 3), nsmall = 3)),
-    gettextf("%s < %s %s %s",format(round(probs_es[2], 3), nsmall = 3), "\u03BB\u2081/\u03BB\u2082", "\u2264", format(round(probs_es[3], 3), nsmall = 3)),
+    gettextf("%s < %s %s %s", format(round(probs_es[2], 3), nsmall = 3), "\u03BB\u2081/\u03BB\u2082", "\u2264", format(round(probs_es[3], 3), nsmall = 3)),
     gettextf("%s %s %s", "\u03BB\u2081/\u03BB\u2082", "\u2265", format(round(probs_es[3], 3), nsmall = 3))
   )
 
@@ -295,7 +293,7 @@
   table$addColumns(cols)
 }
 #### Populate table ----
-.populatePowerTabTest2Pois = function(results) {
+.populatePowerTabTest2Pois <- function(results) {
   table <- jaspResults[["powertab"]]
 
   calc <- options$calc
@@ -317,13 +315,13 @@
 }
 
 #### Plot functions ----
-.preparePowerContourTest2Pois = function(jaspResults, options, r, lst) {
+.preparePowerContourTest2Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerContour"]]
   if (is.null(image)) {
     image <- createJaspPlot(
       title = gettext("Power Contour"),
-      width=400,
-      height=350
+      width = 400,
+      height = 350
     )
     image$dependOn(c(
       "test",
@@ -390,25 +388,27 @@
 
 
   z.pwr <- sapply(dd, function(delta) {
-    pwr.2pois2n.test(n1 = nn, n.ratio = n_ratio,
-                      lambda2 = lambda2, lambda1 = lambda2 * delta,
-                      t1 = t1, t2 = t2,
-                      sig.level = alpha,
-                      alternative = alt
+    pwr.2pois2n.test(
+      n1 = nn, n.ratio = n_ratio,
+      lambda2 = lambda2, lambda1 = lambda2 * delta,
+      t1 = t1, t2 = t2,
+      sig.level = alpha,
+      alternative = alt
     )$power
   })
 
   z.delta <- sapply(nn, function(N) {
-    pwr.2pois2n.test(n1 = N, n.ratio = n_ratio,
-                      lambda2 = lambda2,
-                      t1 = t1, t2 = t2,
-                      sig.level = alpha,
-                      power = power,
-                      alternative = alt
+    pwr.2pois2n.test(
+      n1 = N, n.ratio = n_ratio,
+      lambda2 = lambda2,
+      t1 = t1, t2 = t2,
+      sig.level = alpha,
+      power = power,
+      alternative = alt
     )$lambda1 / lambda2
   })
 
-  state = list(
+  state <- list(
     z.pwr = z.pwr,
     z.delta = z.delta,
     ps = ps,
@@ -423,7 +423,7 @@
   )
   image$plotObject <- .powerContour(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.populateContourTextTest2Pois = function(jaspResults, options, r, lst) {
+.populateContourTextTest2Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["contourText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -453,7 +453,7 @@
 
   html[["text"]] <- str
 }
-.preparePowerCurveESTest2Pois = function(jaspResults, options, r, lst) {
+.preparePowerCurveESTest2Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveES"]]
   if (is.null(image)) {
     image <- createJaspPlot(
@@ -500,10 +500,10 @@
   cols <- ps$pal(ps$pow.n.levels)
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
-  state = list(cols = cols, dd = dd, y = y, yrect = yrect, n1 = n1, n2 = n2, alpha = alpha, delta = d, pow = power)
+  state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n1 = n1, n2 = n2, alpha = alpha, delta = d, pow = power)
   image$plotObject <- .powerCurveES(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.populatePowerCurveESTextTest2Pois = function(jaspResults, options, r, lst) {
+.populatePowerCurveESTextTest2Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveESText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -528,8 +528,8 @@
   alt <- lst$alt
 
   n_text <- ifelse(n1 == n2,
-                    gettextf("sample sizes of %s in each group", n1),
-                    gettextf("group sample sizes of %s and %s, respectively", n1, n2)
+    gettextf("sample sizes of %s in each group", n1),
+    gettextf("group sample sizes of %s and %s, respectively", n1, n2)
   )
 
   if (alt == "two.sided") {
@@ -550,13 +550,14 @@
     pwr_string <- gettextf("only be sufficiently sensitive (power >%s)", round(power, 3))
   }
 
-  d50 <- pwr.2pois2n.test(n1 = n1, n.ratio = n_ratio,
-                          lambda2 = lambda2,
-                          t1 = t1, t2 = t2,
-                          sig.level = alpha,
-                          power = 0.5,
-                          alternative = alt
-                          )$lambda1 / lambda2
+  d50 <- pwr.2pois2n.test(
+    n1 = n1, n.ratio = n_ratio,
+    lambda2 = lambda2,
+    t1 = t1, t2 = t2,
+    sig.level = alpha,
+    power = 0.5,
+    alternative = alt
+  )$lambda1 / lambda2
 
   str <- gettextf(
     "<p>The power curve above shows how the sensitivity of the test and design is larger for larger effect sizes. If we obtained %s our test and design would %s to effect sizes of %s%s. <p>We would be more than likely to miss (power less than 50%%) effect sizes less than <i>%s=</i>%s.",
@@ -565,10 +566,10 @@
 
   html[["text"]] <- str
 }
-.preparePowerCurveNTest2Pois = function(jaspResults, options, r, lst) {
+.preparePowerCurveNTest2Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveN"]]
   if (is.null(image)) {
-    image <- createJaspPlot(title="Power Curve by N", width=400, height=350)
+    image <- createJaspPlot(title = "Power Curve by N", width = 400, height = 350)
     image$dependOn(c(
       "test",
       "p0",
@@ -645,13 +646,13 @@
     ylim = c(0, 1)
   )
 
-  state = list(n = n1, cols = cols, nn = nn, y = y, yrect = yrect, lims = lims, delta = d, alpha = alpha, n_ratio = n_ratio, pow = power)
+  state <- list(n = n1, cols = cols, nn = nn, y = y, yrect = yrect, lims = lims, delta = d, alpha = alpha, n_ratio = n_ratio, pow = power)
   image$plotObject <- .powerCurveN(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.preparePowerDistTest2Pois = function(jaspResults, options, r, lst) {
+.preparePowerDistTest2Pois <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
   if (is.null(image)) {
-    image <- createJaspPlot(title="Power Demonstration", width=400, height=300)
+    image <- createJaspPlot(title = "Power Demonstration", width = 400, height = 300)
     image$dependOn(c(
       "test",
       "p0",
@@ -728,10 +729,10 @@
     ylim = c(0, y.max * 1.1)
   )
 
-  state = list(curves = curves, rect = rect, lims = lims)
+  state <- list(curves = curves, rect = rect, lims = lims)
   image$plotObject <- .powerDist(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.populatePowerCurveNTextTest2Pois = function(jaspResults, options, r, lst) {
+.populatePowerCurveNTextTest2Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveNText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -756,8 +757,8 @@
   alt <- lst$alt
 
   n_text <- ifelse(n1 == n2,
-                    gettextf("sample sizes of at least %s in each group", n1),
-                    gettextf("group sample sizes of at least %s and %s, respectively", n1, n2)
+    gettextf("sample sizes of at least %s in each group", n1),
+    gettextf("group sample sizes of at least %s and %s, respectively", n1, n2)
   )
 
   if (alt == "two.sided") {
@@ -779,7 +780,7 @@
 
   html[["text"]] <- str
 }
-.populateDistTextTest2Pois = function(jaspResults, options, r, lst) {
+.populateDistTextTest2Pois <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["distText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -804,8 +805,8 @@
   alt <- lst$alt
 
   n_text <- ifelse(n1 == n2,
-                    gettextf("a sample size of %s in each group", n1),
-                    gettextf("group sample sizes of %s and %s, respectively", n1, n2)
+    gettextf("a sample size of %s in each group", n1),
+    gettextf("group sample sizes of %s and %s, respectively", n1, n2)
   )
 
   if (alt == "two.sided") {

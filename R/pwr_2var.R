@@ -1,12 +1,13 @@
 # Originally based on https://github.com/richarddmorey/jpower
 
-.runTest2Var = function(jaspResults, options) {
+.runTest2Var <- function(jaspResults, options) {
   stats <- .prepareStats(jaspResults, options)
 
   ## Compute results
   results <- try(.computeTest2Var(jaspResults, options, stats))
-  if(inherits(results, "try-error"))
+  if (inherits(results, "try-error")) {
     .quitAnalysis(gettext("Unable to compute the power results. Try to enter less extreme values for the input parameters."))
+  }
 
   .initPowerTabTest2Var(jaspResults, options, results, stats)
 
@@ -49,23 +50,26 @@
 }
 
 #### Compute results ----
-.computeTest2Var = function(jaspResults, options, stats) {
+.computeTest2Var <- function(jaspResults, options, stats) {
   ## Compute numbers for table
   pow.n <- NULL
   pow.es <- NULL
   pow.pow <- NULL
-  if(options$calculation == "sampleSize")
+  if (options$calculation == "sampleSize") {
     pow.n <- ceiling(pwr.2var2n.test(n.ratio = stats$n_ratio, rho = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
-  if(options$calculation == "effectSize")
-    pow.es <- pwr.2var2n.test(n = stats$n, n.ratio = stats$n2/stats$n1, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$rho
-  if(options$calculation == "power")
-    pow.pow <- pwr.2var2n.test(n = stats$n1, n.ratio = stats$n2/stats$n1, rho = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
+  }
+  if (options$calculation == "effectSize") {
+    pow.es <- pwr.2var2n.test(n = stats$n, n.ratio = stats$n2 / stats$n1, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$rho
+  }
+  if (options$calculation == "power") {
+    pow.pow <- pwr.2var2n.test(n = stats$n1, n.ratio = stats$n2 / stats$n1, rho = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
+  }
 
   return(list(n1 = pow.n, n2 = ceiling(pow.n * stats$n_ratio), es = pow.es, power = pow.pow))
 }
 
 #### Init table ----
-.initPowerTabTest2Var = function(jaspResults, options, results, stats) {
+.initPowerTabTest2Var <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powertab"]]
 
   if (is.null(table)) {
@@ -113,9 +117,9 @@
 
   for (i in seq_along(order)) {
     table$addColumnInfo(colNames[order[i]],
-                        title = colLabels[order[i]],
-                        overtitle = if (calc == "sampleSize" && i > 2 || calc != "sampleSize" && i > 1) "User Defined" else NULL,
-                        type = colType[order[i]]
+      title = colLabels[order[i]],
+      overtitle = if (calc == "sampleSize" && i > 2 || calc != "sampleSize" && i > 1) "User Defined" else NULL,
+      type = colType[order[i]]
     )
   }
 
@@ -133,7 +137,7 @@
 
   .populatePowerTabTest2Var(jaspResults, options, results, stats)
 }
-.initPowerESTabTest2Var = function(jaspResults, options, results, stats) {
+.initPowerESTabTest2Var <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powerEStab"]]
 
   if (is.null(table)) {
@@ -189,7 +193,7 @@
 
   .populatePowerESTabTest2Var(jaspResults, options, results, stats)
 }
-.populatePowerESTabTest2Var = function(jaspResults, options, r, lst) {
+.populatePowerESTabTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["tabText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -206,18 +210,18 @@
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   power <- ifelse(calc == "power", r$power, lst$pow)
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
 
   n_text <- ifelse(n1 == n2,
-                    gettextf("a sample size of %1$s in each group ", n1),
-                    gettextf("group sample sizes of %1$s and %2$s respectively, ", n1, n2)
+    gettextf("a sample size of %1$s in each group ", n1),
+    gettextf("group sample sizes of %1$s and %2$s respectively, ", n1, n2)
   )
   tail_text <- ifelse(alt == "two.sided",
-                      "two-sided",
-                      "one-sided"
+    "two-sided",
+    "one-sided"
   )
 
   sign <- ifelse(d > 1, "\u2265", "\u2264")
@@ -241,8 +245,8 @@
   }
 
   hypo_text <- ifelse(alt == "two.sided",
-                      gettextf("<i>%1$s</i>%2$s1", "\u03C1", "\u2260"),
-                      ifelse(alt == "less", gettext("<i>\u03C1<1</i>"), gettext("<i>\u03C1>1</i>"))
+    gettextf("<i>%1$s</i>%2$s1", "\u03C1", "\u2260"),
+    ifelse(alt == "less", gettext("<i>\u03C1<1</i>"), gettext("<i>\u03C1>1</i>"))
   )
 
   str <- paste0(
@@ -258,17 +262,19 @@
 
   probs <- c(.5, .8, .95)
   probs_es <- try(sapply(probs, function(p) {
-    if(alt == "two.sided" && d < 1) {
+    if (alt == "two.sided" && d < 1) {
       pwr.2var2n.test(
         n = n1, n.ratio = n_ratio, sig.level = alpha, power = p,
-        alternative = alt)$rho[2]
+        alternative = alt
+      )$rho[2]
     } else {
       pwr.2var2n.test(
         n = n1, n.ratio = n_ratio, sig.level = alpha, power = p,
-        alternative = alt)$rho[1]
+        alternative = alt
+      )$rho[1]
     }
   }))
-  if(inherits(probs_es, "try-error")) {
+  if (inherits(probs_es, "try-error")) {
     table$setError(gettext("The specified design leads to (an) unsolvable equation(s) while computing the values for this power table. Try to enter less extreme values for the parameters."))
     return()
   }
@@ -279,24 +285,25 @@
   esText <- c(
     gettextf("1 %1$s %2$s %3$s  %4$s", sign1, "\u03C1", sign2, format(round(as.numeric(probs_es[1]), 3), nsmall = 3)),
     gettextf("%1$s %2$s %3$s %4$s %5$s", format(round(as.numeric(probs_es[1]), 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(as.numeric(probs_es[2]), 3), nsmall = 3)),
-    gettextf("%1$s %2$s %3$s %4$s %5$s",format(round(as.numeric(probs_es[2]), 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(as.numeric(probs_es[3]), 3), nsmall = 3)),
+    gettextf("%1$s %2$s %3$s %4$s %5$s", format(round(as.numeric(probs_es[2]), 3), nsmall = 3), sign1, "\u03C1", sign2, format(round(as.numeric(probs_es[3]), 3), nsmall = 3)),
     gettextf("%1$s %2$s %3$s", "\u03C1", sign3, format(round(as.numeric(probs_es[3]), 3), nsmall = 3))
   )
 
   cols <- list("es" = esText)
   table$addColumns(cols)
-  if(alt == "two.sided" && calc != "effectSize")
+  if (alt == "two.sided" && calc != "effectSize") {
     table$addFootnote(gettext("To improve readability of this power table for a 'Two-sided' alternative hypothesis, only the intervals in the direction of the specified variance ratio are displayed under 'True variance ratio'"))
+  }
 }
 #### Populate table ----
-.populatePowerTabTest2Var = function(jaspResults, options, r, lst) {
+.populatePowerTabTest2Var <- function(jaspResults, options, r, lst) {
   table <- jaspResults[["powertab"]]
 
   calc <- options$calculation
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   power <- ifelse(calc == "power", r$power, lst$pow)
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
@@ -311,28 +318,32 @@
     table$addColumns(row)
   } else {
     row <- list()
-    row[[calc]] <- r[[switch(calc, "sampleSize" = "n", calc)]]
+    row[[calc]] <- r[[switch(calc,
+      "sampleSize" = "n",
+      calc
+    )]]
     table$addColumns(row)
   }
   if (calc == "sampleSize") {
     if (round(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3) == 1) {
       table$addFootnote(gettext("Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: >0.999"))
     } else {
-      table$addFootnote(gettextf("Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: %1$s</b>",
-                                  round(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3)
+      table$addFootnote(gettextf(
+        "Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: %1$s</b>",
+        round(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3)
       ))
     }
   }
 }
 
 #### Plot functions ----
-.preparePowerContourTest2Var = function(jaspResults, options, r, lst) {
+.preparePowerContourTest2Var <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerContour"]]
   if (is.null(image)) {
     image <- createJaspPlot(
       title = gettext("Power Contour"),
-      width=400,
-      height=350
+      width = 400,
+      height = 350
     )
     image$dependOn(c(
       "test",
@@ -355,14 +366,16 @@
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
   power <- ifelse(calc == "power",
-                  r$power,
-                  ifelse(calc == "sampleSize",
-                          pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
-                          lst$pow))
+    r$power,
+    ifelse(calc == "sampleSize",
+      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      lst$pow
+    )
+  )
 
   ps <- ttestPlotSettings
 
@@ -373,7 +386,7 @@
     sig.level = alpha,
     alternative = alt
   )$n))
-  if(inherits(maxn, "try-error")) {
+  if (inherits(maxn, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
     return()
   }
@@ -399,38 +412,40 @@
 
   mind <- ifelse(alt == "two.sided" || alt == "less", min(d, 0.1), 1)
   maxd <- ifelse(alt == "less", 1,
-                  ifelse(alt == "two.sided" && d < 1, max(2, ((1/d) * 1.2)), max(2, (d * 1.2)))
+    ifelse(alt == "two.sided" && d < 1, max(2, ((1 / d) * 1.2)), max(2, (d * 1.2)))
   )
 
   dd <- seq(mind, maxd, len = 20)
 
 
   z.pwr <- try(sapply(dd, function(delta) {
-    pwr.2var2n.test(n = nn, n.ratio = n_ratio,
-                  rho = delta,
-                  sig.level = alpha,
-                  alternative = alt
+    pwr.2var2n.test(
+      n = nn, n.ratio = n_ratio,
+      rho = delta,
+      sig.level = alpha,
+      alternative = alt
     )$power
   }))
-  if(inherits(z.pwr, "try-error")) {
+  if (inherits(z.pwr, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
     return()
   }
 
 
   z.delta <- try(sapply(nn, function(N) {
-      pwr.2var2n.test(n = N, n.ratio = n_ratio,
-                  sig.level = alpha,
-                  power = power,
-                  alternative = alt
+    pwr.2var2n.test(
+      n = N, n.ratio = n_ratio,
+      sig.level = alpha,
+      power = power,
+      alternative = alt
     )$rho
   }))
-  if(inherits(z.delta, "try-error")) {
+  if (inherits(z.delta, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
     return()
   }
 
-  state = list(
+  state <- list(
     z.pwr = z.pwr,
     z.delta = z.delta,
     ps = ps,
@@ -445,7 +460,7 @@
   )
   image$plotObject <- .powerContour(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.populateContourTextTest2Var = function(jaspResults, options, r, lst) {
+.populateContourTextTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["contourText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -460,7 +475,7 @@
 
   html[["text"]] <- str
 }
-.preparePowerCurveESTest2Var = function(jaspResults, options, r, lst) {
+.preparePowerCurveESTest2Var <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveES"]]
   if (is.null(image)) {
     image <- createJaspPlot(
@@ -489,14 +504,16 @@
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
   power <- ifelse(calc == "power",
-                  r$power,
-                  ifelse(calc == "sampleSize",
-                          pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
-                          lst$pow))
+    r$power,
+    ifelse(calc == "sampleSize",
+      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      lst$pow
+    )
+  )
 
   ps <- ttestPlotSettings
 
@@ -508,7 +525,7 @@
     if (alt == "two.sided") {
       mind <- min(as.numeric(maxd[2]), d)
       maxd <- max(as.numeric(maxd[1]), d)
-    } else if(alt == "less") {
+    } else if (alt == "less") {
       mind <- min(as.numeric(maxd), d)
       maxd <- 1
     } else {
@@ -521,17 +538,17 @@
   dd <- seq(mind, maxd, len = ps$curve.n)
 
   y <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = dd, sig.level = alpha, alternative = alt)$power)
-  if(inherits(y, "try-error")) {
+  if (inherits(y, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the power curve. Try to enter less extreme values for the parameters"))
     return()
   }
   cols <- ps$pal(ps$pow.n.levels)
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
-  state = list(cols = cols, dd = dd, y = y, yrect = yrect, n1 = n1, n2 = n2, alpha = alpha, delta = d, pow = power)
+  state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n1 = n1, n2 = n2, alpha = alpha, delta = d, pow = power)
   image$plotObject <- .powerCurveES(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.populatePowerCurveESTextTest2Var = function(jaspResults, options, r, lst) {
+.populatePowerCurveESTextTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveESText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -548,37 +565,40 @@
   power <- ifelse(calc == "power", r$power, lst$pow)
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   if (alt == "two.sided" && d < 1) {
     d <- ifelse(calc == "effectSize",
-                d,
-                ifelse(calc == "sampleSize",
-                        try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[2]),
-                        lst$es))
+      d,
+      ifelse(calc == "sampleSize",
+        try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[2]),
+        lst$es
+      )
+    )
   } else {
     d <- ifelse(calc == "effectSize",
-                d,
-                ifelse(calc == "sampleSize",
-                        try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[1]),
-                        lst$es))
+      d,
+      ifelse(calc == "sampleSize",
+        try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[1]),
+        lst$es
+      )
+    )
   }
-  if(inherits(d, "try-error")) {
+  if (inherits(d, "try-error")) {
     return()
-  } else{
+  } else {
     d <- round(as.numeric(d), 3)
   }
 
 
   n_text <- ifelse(n1 == n2,
-                    gettextf("sample sizes of %1$s in each group", n1),
-                    gettextf("group sample sizes of %1$s and %2$s, respectively", n1, n2)
+    gettextf("sample sizes of %1$s in each group", n1),
+    gettextf("group sample sizes of %1$s and %2$s, respectively", n1, n2)
   )
 
-  if (d >1) {
+  if (d > 1) {
     alt_text <- "<i>\u03C1\u003E</i>"
   } else {
     alt_text <- "<i>\u03C1\u003C</i>"
-
   }
 
   if (calc == "power") {
@@ -589,19 +609,20 @@
 
   if (alt == "two.sided" && d < 1) {
     d50 <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[2])
-    if (inherits(d50, "try-error"))
+    if (inherits(d50, "try-error")) {
       return()
+    }
     interval <- gettextf("1 > %1$s > %2$s", "\u03C1", round(d50, 3))
   } else {
     d50 <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[1])
-    if (inherits(d50, "try-error"))
+    if (inherits(d50, "try-error")) {
       return()
+    }
     if (alt == "less" || alt == "two.sided" && d < 1) {
       interval <- gettextf("1 > %1$s > %2$s", "\u03C1", round(as.numeric(d50), 3))
     } else {
       interval <- gettextf("1 < %1$s < %2$s", "\u03C1", round(as.numeric(d50), 3))
     }
-
   }
 
   str <- gettextf(
@@ -611,10 +632,10 @@
 
   html[["text"]] <- str
 }
-.preparePowerCurveNTest2Var = function(jaspResults, options, r, lst) {
+.preparePowerCurveNTest2Var <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveN"]]
   if (is.null(image)) {
-    image <- createJaspPlot(title="Power Curve by N", width=400, height=350)
+    image <- createJaspPlot(title = "Power Curve by N", width = 400, height = 350)
     image$dependOn(c(
       "test",
       "effectSize",
@@ -636,14 +657,16 @@
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
   n_ratio <- lst$n_ratio
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
   power <- ifelse(calc == "power",
-                  r$power,
-                  ifelse(calc == "sampleSize",
-                          pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
-                          lst$pow))
+    r$power,
+    ifelse(calc == "sampleSize",
+      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      lst$pow
+    )
+  )
 
   ps <- ttestPlotSettings
 
@@ -654,7 +677,7 @@
     sig.level = alpha,
     alternative = alt
   )$n))
-  if(inherits(maxn, "try-error")) {
+  if (inherits(maxn, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the 'Power Curve by N' plot. Try to enter less extreme values for the parameters"))
     return()
   } else if (n1 >= maxn && n1 >= ps$maxn) {
@@ -676,7 +699,7 @@
     n.ratio = n_ratio,
     rho = d, sig.level = alpha, alternative = alt
   )$power)
-  if(inherits(y, "try-error")) {
+  if (inherits(y, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the 'Power Curve by N' plot. Try to enter less extreme values for the parameters"))
     return()
   }
@@ -689,13 +712,13 @@
     ylim = c(0, 1)
   )
 
-  state = list(n = n1, cols = cols, nn = nn, y = y, yrect = yrect, lims = lims, delta = d, alpha = alpha, n_ratio = n_ratio, pow = power)
+  state <- list(n = n1, cols = cols, nn = nn, y = y, yrect = yrect, lims = lims, delta = d, alpha = alpha, n_ratio = n_ratio, pow = power)
   image$plotObject <- .powerCurveN(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.preparePowerDistTest2Var = function(jaspResults, options, r, lst) {
+.preparePowerDistTest2Var <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
   if (is.null(image)) {
-    image <- createJaspPlot(title="Power Demonstration", width=400, height=300)
+    image <- createJaspPlot(title = "Power Demonstration", width = 400, height = 300)
     image$dependOn(c(
       "test",
       "effectSize",
@@ -717,35 +740,37 @@
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
   power <- ifelse(calc == "power",
-                  r$power,
-                  ifelse(calc == "sampleSize",
-                          pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
-                          lst$pow))
+    r$power,
+    ifelse(calc == "sampleSize",
+      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      lst$pow
+    )
+  )
 
   df1 <- n1 - 1
   df2 <- n2 - 1
   if (d < 1) {
     d_copy <- d
-    d <- 1/d
+    d <- 1 / d
     df1_1 <- df1
     df1 <- df2
     df2 <- df1_1
   } else {
     d_copy <- d
   }
-  if ( alt == "two.sided") {
+  if (alt == "two.sided") {
     ncp.body <- quote({
-      pf(q = qf(p = alpha/2, df1 =  df1,  df2 =df2, lower.tail = FALSE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = FALSE) +
-        pf(q = qf(p = alpha/2, df1 =  df1,  df2 =df2, lower.tail = TRUE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = TRUE)
-      })
+      pf(q = qf(p = alpha / 2, df1 = df1, df2 = df2, lower.tail = FALSE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = FALSE) +
+        pf(q = qf(p = alpha / 2, df1 = df1, df2 = df2, lower.tail = TRUE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = TRUE)
+    })
   } else {
-  ncp.body <- quote({
-    pf(q = qf(p = alpha, df1 =  df1,  df2 =df2, lower.tail = FALSE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = FALSE)
-  })
+    ncp.body <- quote({
+      pf(q = qf(p = alpha, df1 = df1, df2 = df2, lower.tail = FALSE), df1 = df1, df2 = df2, ncp = ncp, lower.tail = FALSE)
+    })
   }
 
   ncp <- try(uniroot(function(ncp) eval(ncp.body) - power, c(1e-10, 1e+10))$root)
@@ -759,7 +784,7 @@
     crit_lower <- qf(p = alpha / 2, df1 = df1, df2 = df2)
   } else {
     crit <- qf(p = 1 - alpha, df1 = df1, df2 = df2)
-    }
+  }
 
 
   xlims <- c(0, qf(.999^(d), df1 = df1, df2 = df2, ncp = ncp))
@@ -787,17 +812,17 @@
       x1 = xlims[1] - 1, x2 = crit,
       y1 = 0, y2 = y.max * 1.1
     )
-    }
+  }
 
   lims <- data.frame(
     xlim = c(xlims[1], xlims[2]),
     ylim = c(0, y.max * 1.1)
   )
 
-  state = list(curves = curves, rect = rect, lims = lims, d = d_copy)
+  state <- list(curves = curves, rect = rect, lims = lims, d = d_copy)
   image$plotObject <- .powerDist(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
 }
-.populatePowerCurveNTextTest2Var = function(jaspResults, options, r, lst) {
+.populatePowerCurveNTextTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveNText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -811,21 +836,21 @@
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   d <- round(d, 3)
   power <- ifelse(calc == "power", r$power, lst$pow)
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
 
   n_text <- ifelse(n1 == n2,
-                    gettextf("sample sizes of at least %1$s in each group", n1),
-                    gettextf("group sample sizes of at least %1$s and %2$s, respectively", n1, n2)
+    gettextf("sample sizes of at least %1$s in each group", n1),
+    gettextf("group sample sizes of at least %1$s and %2$s, respectively", n1, n2)
   )
 
-  if(alt == "two.sided") {
+  if (alt == "two.sided") {
     alt_text <- "<i>\u03C1\u2260</i>1"
   } else {
-    if (d >1) {
+    if (d > 1) {
       alt_text <- "<i>\u03C1\u003E</i>1"
     } else {
       alt_text <- "<i>\u03C1\u003C</i>1"
@@ -839,7 +864,7 @@
 
   html[["text"]] <- str
 }
-.populateDistTextTest2Var = function(jaspResults, options, r, lst) {
+.populateDistTextTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["distText"]]
   if (is.null(html)) {
     html <- createJaspHtml()
@@ -853,38 +878,41 @@
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   d <- round(d, 2)
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
   power <- ifelse(calc == "power",
-                  r$power,
-                  ifelse(calc == "sampleSize",
-                          pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
-                          lst$pow))
+    r$power,
+    ifelse(calc == "sampleSize",
+      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      lst$pow
+    )
+  )
 
-  if(d < 1) {
+  if (d < 1) {
     n1_1 <- n1
     n1 <- n2
     n2 <- n1_1
   }
   n_text <- ifelse(n1 == n2,
-                    gettextf("a sample size of %1$s in each group", n1),
-                    gettextf("group sample sizes of %1$s and %2$s, respectively", n1, n2)
+    gettextf("a sample size of %1$s in each group", n1),
+    gettextf("group sample sizes of %1$s and %2$s, respectively", n1, n2)
   )
-  if (d <1 )
+  if (d < 1) {
     ratio_text <- gettext("<i>Note.</i> When the variance ratio is less than 1, the inverse of the variance ratio is displayed. Therefore, the first and second degrees of freedom of both F-distributions switched places.\n\n")
-  if (d > 1)
+  }
+  if (d > 1) {
     ratio_text <- gettext("")
+  }
 
-  es_text <- ifelse(d < 1, gettextf("1/%1$s", "\u03C1"),gettextf("%1$s", "\u03C1"))
-  d       <- ifelse(d < 1, round(1/d, 2), d)
+  es_text <- ifelse(d < 1, gettextf("1/%1$s", "\u03C1"), gettextf("%1$s", "\u03C1"))
+  d <- ifelse(d < 1, round(1 / d, 2), d)
   if (alt == "two.sided") {
     tail_text <- gettext("two-sided")
     null_text <- gettextf("<i>%1$s=</i>1,", es_text)
     alt_text <- gettextf("<i>%1$s</i><i>\u2260</i>", es_text)
     crit_text <- gettext("criteria")
-
   } else if (alt == "less") {
     tail_text <- gettext("one-sided")
     null_text <- gettextf("<i>%1$s\u2264</i>1,", es_text)
@@ -900,7 +928,7 @@
 
   str <- paste(
     "<p>",
-    gettextf("%1$sThe figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> variance ratio when <i>%2$s=</i>1 (left), and when <i>%3$s=</i>%4$s (right).",ratio_text, es_text, es_text, d),
+    gettextf("%1$sThe figure above shows two sampling distributions: the sampling distribution of the <i>estimated</i> variance ratio when <i>%2$s=</i>1 (left), and when <i>%3$s=</i>%4$s (right).", ratio_text, es_text, es_text, d),
     gettextf("Both assume %1$s.", n_text),
     "</p><p>",
     gettextf("The vertical dashed lines show the %1$s we would set for a %2$s test with <i>\u03B1=</i>%3$s.", crit_text, tail_text, alpha),
@@ -917,8 +945,7 @@
 }
 
 #### Generate synthetic dataset ----
-.generateDatasetTest2Var = function(jaspResults, options, r, lst) {
-
+.generateDatasetTest2Var <- function(jaspResults, options, r, lst) {
   datasetContainer <- jaspResults[["datasetcont"]]
   if (is.null(datasetContainer)) {
     # Create Container if it doesn't exist yet
@@ -948,32 +975,34 @@
     datasetContainer$position <- 12
     jaspResults[["datasetcont"]] <- datasetContainer
 
-    generatedDataset     <- createJaspState()
+    generatedDataset <- createJaspState()
     characteristicsTable <- createJaspTable(title = gettext("Characteristics"))
-    powerTable           <- createJaspTable(gettext("Post Hoc Power Analysis"))
-
+    powerTable <- createJaspTable(gettext("Post Hoc Power Analysis"))
   } else {
     return()
   }
 
-  #Generate dataset
-  if(!grepl(".csv", options[["savePath"]], fixed = TRUE) && !grepl(".txt", options[["savePath"]], fixed = TRUE))
+  # Generate dataset
+  if (!grepl(".csv", options[["savePath"]], fixed = TRUE) && !grepl(".txt", options[["savePath"]], fixed = TRUE)) {
     .quitAnalysis(gettext("The generated dataset must be saved as a .csv or .txt file."))
+  }
 
   calc <- options$calculation
 
   n_ratio <- lst$n_ratio
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
-  if(calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
+  if (calc == "effectSize") d <- ifelse(lst$alt == "two.sided" && options$effectDirection == "less", r$es[2], r$es[1]) else d <- lst$es
   d <- round(d, 2)
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
   power <- ifelse(calc == "power",
-                  r$power,
-                  ifelse(calc == "sampleSize",
-                          pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
-                          lst$pow))
+    r$power,
+    ifelse(calc == "sampleSize",
+      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      lst$pow
+    )
+  )
 
   sd_2 <- options[["secondGroupSd"]]
   var_2 <- sd_2^2
@@ -985,8 +1014,9 @@
   mean_1 <- options[["firstGroupMean"]]
   mean_2 <- options[["secondGroupMean"]]
 
-  if(options[["setSeed"]])
+  if (options[["setSeed"]]) {
     set.seed(options[["seed"]])
+  }
 
   group_1 <- rnorm(n1, mean = 0, sd = sd_1)
   group_2 <- rnorm(n2, mean = 0, sd = sd_2)
@@ -1000,21 +1030,22 @@
   group_1 <- group_1 + mean_1
   group_2 <- group_2 + mean_2
 
-  id        <- seq.int(1, length(group_1) + length(group_2))
+  id <- seq.int(1, length(group_1) + length(group_2))
   dependent <- c(group_1, group_2)
-  group     <- c(rep(1, length(group_1)), rep(2, length(group_2)))
+  group <- c(rep(1, length(group_1)), rep(2, length(group_2)))
 
   dataset <- data.frame(cbind(id, dependent, group))
 
   csv <- try(write.csv(dataset, options[["savePath"]], row.names = FALSE))
-  if(inherits(csv, "try-error"))
+  if (inherits(csv, "try-error")) {
     .quitAnalysis(gettext("The generated dataset could not be saved. Please make sure that the specified path exists and the specified csv file is closed."))
+  }
 
   generatedDataset <- dataset
 
   datasetContainer[["generatedData"]] <- generatedDataset
 
-  #Characteristics tab
+  # Characteristics tab
   colNames <- c("n1", "n2", "mean1", "mean2", "s1", "s2")
   colLabels <- c(
     gettext("N\u2081"),
@@ -1028,22 +1059,22 @@
 
   for (i in seq_along(colNames)) {
     characteristicsTable$addColumnInfo(colNames[i],
-                                        title = colLabels[i],
-                                        type = colType[i]
+      title = colLabels[i],
+      type = colType[i]
     )
   }
 
-  characteristicsTable[["n1"]]     <- n1
-  characteristicsTable[["n2"]]     <- n2
-  characteristicsTable[["mean1"]]  <- mean_1
-  characteristicsTable[["mean2"]]  <- mean_2
-  characteristicsTable[["s1"]]     <- sd_1
-  characteristicsTable[["s2"]]     <- sd_2
+  characteristicsTable[["n1"]] <- n1
+  characteristicsTable[["n2"]] <- n2
+  characteristicsTable[["mean1"]] <- mean_1
+  characteristicsTable[["mean2"]] <- mean_2
+  characteristicsTable[["s1"]] <- sd_1
+  characteristicsTable[["s2"]] <- sd_2
   characteristicsTable$addFootnote(gettextf("The synthetic dataset is saved as %s", options[["savePath"]]))
 
   datasetContainer[["characteristics"]] <- characteristicsTable
 
-  #Post hoc Power tab
+  # Post hoc Power tab
   colNames <- c("es", "alt", "power", "alpha")
   colLabels <- c(
     gettext("Variance ratio (\u03C1)"),
@@ -1055,16 +1086,16 @@
 
   for (i in seq_along(colNames)) {
     powerTable$addColumnInfo(colNames[i],
-                              title = colLabels[i],
-                              type = colType[i]
+      title = colLabels[i],
+      type = colType[i]
     )
   }
 
-  powerTable[["es"]]     <- d
-  powerTable[["alt"]]    <- switch(alt,
-                                    "two.sided" = "Two-sided",
-                                    "less" = "Less (One-sided)",
-                                    "greater" = "Greater (One-sided)"
+  powerTable[["es"]] <- d
+  powerTable[["alt"]] <- switch(alt,
+    "two.sided" = "Two-sided",
+    "less" = "Less (One-sided)",
+    "greater" = "Greater (One-sided)"
   )
   powerTable[["power"]] <- power
   powerTable[["alpha"]] <- alpha
