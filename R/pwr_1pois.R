@@ -74,7 +74,7 @@
 
 
 #### Init table ----
-.initPowerTabTest1Pois <- function(results) {
+.initPowerTabTest1Pois <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powertab"]]
   if (is.null(table)) {
     # Create table if it doesn't exist yet

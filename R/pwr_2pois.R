@@ -68,7 +68,7 @@
 }
 
 #### Init table ----
-.initPowerTabTest2Pois <- function(results) {
+.initPowerTabTest2Pois <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powertab"]]
 
   if (is.null(table)) {
@@ -140,7 +140,7 @@
 
   table$addRows(rowNames = 1, row)
 
-  .populatePowerTabTest2Pois(results)
+  .populatePowerTabTest2Pois(jaspResults, options, results, stats)
 }
 .initPowerESTabTest2Pois <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powerEStab"]]
@@ -293,7 +293,7 @@
   table$addColumns(cols)
 }
 #### Populate table ----
-.populatePowerTabTest2Pois <- function(results) {
+.populatePowerTabTest2Pois <- function(jaspResults, options, results, stats) {
   table <- jaspResults[["powertab"]]
 
   calc <- options$calc
