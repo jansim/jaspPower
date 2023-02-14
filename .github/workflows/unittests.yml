@@ -1,22 +1,12 @@
 name: Reusable workflow for JASP unit tests
 
 on:
-  workflow_call:
-    inputs:
-      needs_JAGS:
-        description: 'Should JAGS be available?'
-        required: false
-        type: boolean
-        default: false
-      needs_igraph:
-        description: '(Linux only) Should igraph be recompiled?'
-        required: false
-        type: boolean
-        default: false
-      continue_on_schedule:
-        description: 'Should the workflow also be run on a schedule? By default (false), this only happens when the github.repository_owner is jasp-stats.'
-        type: boolean
-        default: false
+  push:
+    paths: ['**.R', 'tests/**', '**.Rd', '**.c', '**.cpp', '**.h', '**.hpp', 'DESCRIPTION', 'NAMESPACE', 'MAKEVARS', 'MAKEVARS.win', '**.yml']
+  pull_request:
+    paths: ['**.R', 'tests/**', '**.Rd', '**.c', '**.cpp', '**.h', '**.hpp', 'DESCRIPTION', 'NAMESPACE', 'MAKEVARS', 'MAKEVARS.win']
+  schedule:
+    - cron:  '13 12 * * 1-5'
 
 jobs:
   scheduled-run-check:
