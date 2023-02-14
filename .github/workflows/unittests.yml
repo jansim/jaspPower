@@ -19,7 +19,7 @@ jobs:
     - id: check
       name: Check for a scheduled run
       run: |
-        if [ ${{ inputs.continue_on_schedule == 'true' || github.event_name != 'schedule' || github.repository_owner != 'jasp-stats' }} ]; then
+        if [ ${{ github.event_name != 'schedule' || github.repository_owner != 'jasp-stats' }} ]; then
           echo "::set-output name=status::success"
         else
           echo "::set-output name=status::error"
@@ -75,48 +75,6 @@ jobs:
           brew install harfbuzz fribidi libgit2 openssl curl
         shell: bash
 
-      - name: Download JAGS and set JAGS_HOME on Windows
-        if: runner.os == 'Windows' && inputs.needs_JAGS
-        run: |
-          beforeR420 <- getRversion() < "4.2.0"
-
-          jagsUrl <- if (beforeR420) {
-            'https://static.jasp-stats.org/development/JAGS-4.3.0-Windows.zip'
-          } else {
-            'https://static.jasp-stats.org/development/JAGS-4.3.1-Windows.zip'
-          }
-
-          destfile <- 'JAGS-Windows.zip'
-          download.file(jagsUrl, destfile = destfile)
-          unzip(destfile, exdir = 'JAGS')
-
-          con <- file(description = Sys.getenv("GITHUB_ENV"), open = "a")
-          on.exit(close(con))
-
-          jagsHome <- jagsRoot <- normalizePath("JAGS", winslash = "/")
-          cat("JAGS_HOME=", jagsHome, "\n", sep = "", file = con)
-          cat("JAGS_ROOT=", jagsRoot, "\n", sep = "", file = con)
-
-        working-directory: ..
-        shell: Rscript {0}
-
-      - name: Install JAGS on macOS
-        if: runner.os == 'macOS' && inputs.needs_JAGS
-        run: |
-          rm '/usr/local/bin/gfortran'
-          brew install jags
-        shell: bash
-
-      - name: Install system dependencies on linux
-        if: runner.os == 'Linux'
-        run: |
-          # ragg                                          requires libharfbuzz-dev libfribidi-dev
-          # credentials   (dependency of usethis)         requires libgit2-dev
-          # curl          (dependency of usethis)         requires libcurl4-openssl-dev
-
-          sudo apt install libharfbuzz-dev libfribidi-dev libgit2-dev libcurl4-openssl-dev
-        shell: bash
-
       - name: Set environment variable to never compile packages on Windows and macOS
         if: runner.os != 'Linux' && matrix.r != 'devel'
         run: |
@@ -132,20 +90,9 @@ jobs:
           needs: check
           cache-version: 2
 
-      - name: Install JAGS on Linux
-        if: runner.os == 'Linux' && inputs.needs_JAGS
-        run: sudo apt install jags
-        shell: bash
-
       - name: Setup jaspTools
         run: |
           jaspTools::setupJaspTools()
-        shell: Rscript {0}
-
-      # so Rstudio's binary for igraph appears to be incompatible (i.e., crashes hard) with GitHub actions. Instead, we install igraph from source
-      - name: Make sure igraph is installed from source
-        if: runner.os == 'Linux' && inputs.needs_igraph
-        run: install.packages("igraph", type = "source", repos = "https://cloud.r-project.org/")
         shell: Rscript {0}
 
       - name: Run unit tests
