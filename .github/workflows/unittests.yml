@@ -103,4 +103,4 @@ jobs:
         if: always()
         with:
           name: my-artifact
-          path: '**.svg'
+          path: tests/**/*.svg
