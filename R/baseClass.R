@@ -227,7 +227,7 @@ baseClass <- R6::R6Class(
       }
       if (self$options$test == "independentSamplesTTest" || self$options$test == "pairedSamplesTTest" ||
            self$options$test == "oneSampleTTest" || self$options$test == "oneSampleZTest")
-        es <- "|\u03B4|"
+        es <- paste0("|", "\u03B4", "|")
       if (self$options$test == "oneSampleProportion" || self$options$test == "twoSamplesProportion")
         es <- "|h|"
       if (self$options$test == "oneSampleVarianceRatio" || self$options$test == "twoSamplesVarianceRatio")
@@ -300,7 +300,7 @@ baseClass <- R6::R6Class(
 
       if (self$options$test == "independentSamplesTTest" || self$options$test == "pairedSamplesTTest" ||
           self$options$test == "oneSampleTTest" || self$options$test == "oneSampleZTest")
-        es <- "|\u03B4|"
+        es <- paste0("|", "\u03B4", "|")
       if (self$options$test == "oneSampleProportion" || self$options$test == "twoSamplesProportion")
         es <- "|h|"
       if (self$options$test == "oneSampleVarianceRatio" || self$options$test == "twoSamplesVarianceRatio")
@@ -363,7 +363,7 @@ baseClass <- R6::R6Class(
 
       if (self$options$test == "independentSamplesTTest" || self$options$test == "pairedSamplesTTest" ||
           self$options$test == "oneSampleTTest" || self$options$test == "oneSampleZTest")
-        es <- "|\u03B4|"
+        es <- paste0("|", "\u03B4", "|")
       if (self$options$test == "oneSampleProportion" || self$options$test == "twoSamplesProportion")
         es <- "|h|"
       if (self$options$test == "oneSampleVarianceRatio" || self$options$test == "twoSamplesVarianceRatio")
@@ -413,7 +413,7 @@ baseClass <- R6::R6Class(
     .powerDist = function(state, ggtheme, ...) {
       if (self$options$test == "independentSamplesTTest" || self$options$test == "pairedSamplesTTest" ||
           self$options$test == "oneSampleTTest" || self$options$test == "oneSampleZTest")
-        es <- "|\u03B4|"
+        es <- paste0("|", "\u03B4", "|")
       if (self$options$test == "oneSampleProportion" || self$options$test == "twoSamplesProportion")
         es <- "|h|"
       if (self$options$test == "oneSampleVarianceRatio" || self$options$test == "twoSamplesVarianceRatio")
