@@ -21,6 +21,16 @@ ttestPSClass <- R6::R6Class(
           if(self$options$calculation == "power")
             pow.pow <- pwr::pwr.t.test(n = stats$n, d = stats$es, sig.level = stats$alpha, alternative = stats$alt, type = private$type)$power
 
+            # Calculate probs_es here to have access to stats list
+            probs <- c(.5, .8, .95)
+            probs_es <- sapply(probs, function(p) {
+                pwr::pwr.t.test(
+                    n = stats$n, sig.level = stats$alpha, power = p,
+                    alternative = stats$alt, type = private$type
+                )$d
+            })
+            private$probs_es <- probs_es
+
             return(list(n = pow.n, es = pow.es, power = pow.pow))
         },
 
