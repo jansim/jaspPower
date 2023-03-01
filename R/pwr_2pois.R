@@ -51,12 +51,12 @@
 
 .computeTest2Pois <- function(jaspResults, options, stats) {
   ## Compute numbers for table
-  pow.n <- try(ceiling(pwr.2pois2n.test(n_ratio = stats$n_ratio, lambda2 = stats$p0, lambda1 = stats$p1, t1 = stats$t1, t2 = stats$t2, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n1), silent = TRUE)
-  pow.lambda1 <- try(pwr.2pois2n.test(n1 = stats$n1, n.ratio = stats$n_ratio, lambda2 = stats$p0, t1 = stats$t1, t2 = stats$t2, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$lambda1, silent = TRUE)
-  pow.pow <- try(pwr.2pois2n.test(n1 = stats$n1, n.ratio = stats$n_ratio, lambda2 = stats$p0, lambda1 = stats$p1, t1 = stats$t1, t2 = stats$t2, sig.level = stats$alpha, alternative = stats$alt)$power, silent = TRUE)
+  pow.n <- try(ceiling(.pwr2Pois2NTest(n_ratio = stats$n_ratio, lambda2 = stats$p0, lambda1 = stats$p1, t1 = stats$t1, t2 = stats$t2, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n1), silent = TRUE)
+  pow.lambda1 <- try(.pwr2Pois2NTest(n1 = stats$n1, n.ratio = stats$n_ratio, lambda2 = stats$p0, t1 = stats$t1, t2 = stats$t2, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$lambda1, silent = TRUE)
+  pow.pow <- try(.pwr2Pois2NTest(n1 = stats$n1, n.ratio = stats$n_ratio, lambda2 = stats$p0, lambda1 = stats$p1, t1 = stats$t1, t2 = stats$t2, sig.level = stats$alpha, alternative = stats$alt)$power, silent = TRUE)
 
 
-  d50 <- pwr.2pois2n.test(
+  d50 <- .pwr2Pois2NTest(
     n1 = stats$n1, n.ratio = stats$n_ratio,
     lambda2 = stats$p0,
     t1 = stats$t1, t2 = stats$t2,
@@ -236,7 +236,7 @@
   print("===> pre-calc")
   probs <- c(.5, .8, .95)
   probs_es <- sapply(probs, function(p) {
-    pwr.2pois2n.test(
+    .pwr2Pois2NTest(
       n1 = n1, n.ratio = n_ratio,
       lambda2 = lambda2,
       t1 = t1, t2 = t2,
@@ -358,7 +358,7 @@
   alt <- lst$alt
 
 
-  maxn <- ceiling(pwr.2pois2n.test(
+  maxn <- ceiling(.pwr2Pois2NTest(
     n_ratio = n_ratio,
     lambda2 = lambda2, lambda1 = lambda1,
     t1 = t1, t2 = t2,
@@ -374,7 +374,7 @@
   }
 
 
-  minn <- ceiling(pwr.2pois2n.test(
+  minn <- ceiling(.pwr2Pois2NTest(
     n_ratio = n_ratio,
     lambda2 = lambda2, lambda1 = lambda1,
     t1 = t1, t2 = t2,
@@ -388,7 +388,7 @@
 
 
   z.pwr <- sapply(dd, function(delta) {
-    pwr.2pois2n.test(
+    .pwr2Pois2NTest(
       n1 = nn, n.ratio = n_ratio,
       lambda2 = lambda2, lambda1 = lambda2 * delta,
       t1 = t1, t2 = t2,
@@ -398,7 +398,7 @@
   })
 
   z.delta <- sapply(nn, function(N) {
-    pwr.2pois2n.test(
+    .pwr2Pois2NTest(
       n1 = N, n.ratio = n_ratio,
       lambda2 = lambda2,
       t1 = t1, t2 = t2,
@@ -496,7 +496,7 @@
 
   dd <- seq(ps$mind, ps$maxd, len = ps$curve.n)
 
-  y <- pwr.2pois2n.test(n1 = n1, n.ratio = n_ratio, lambda2 = lambda2, lambda1 = lambda2 * dd, t1 = t1, t2 = t2, sig.level = alpha, alternative = alt)$power
+  y <- .pwr2Pois2NTest(n1 = n1, n.ratio = n_ratio, lambda2 = lambda2, lambda1 = lambda2 * dd, t1 = t1, t2 = t2, sig.level = alpha, alternative = alt)$power
   cols <- ps$pal(ps$pow.n.levels)
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
@@ -550,7 +550,7 @@
     pwr_string <- gettextf("only be sufficiently sensitive (power >%s)", round(power, 3))
   }
 
-  d50 <- pwr.2pois2n.test(
+  d50 <- .pwr2Pois2NTest(
     n1 = n1, n.ratio = n_ratio,
     lambda2 = lambda2,
     t1 = t1, t2 = t2,
@@ -603,7 +603,7 @@
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
 
-  maxn <- ceiling(pwr.2pois2n.test(
+  maxn <- ceiling(.pwr2Pois2NTest(
     n_ratio = n_ratio,
     lambda2 = lambda2, lambda1 = lambda1,
     t1 = t1, t2 = t2,
@@ -619,7 +619,7 @@
   }
 
 
-  minn <- ceiling(pwr.2pois2n.test(
+  minn <- ceiling(.pwr2Pois2NTest(
     n_ratio = n_ratio,
     lambda2 = lambda2, lambda1 = lambda1,
     t1 = t1, t2 = t2,
@@ -630,7 +630,7 @@
 
   nn <- seq(minn, maxn)
 
-  y <- pwr.2pois2n.test(
+  y <- .pwr2Pois2NTest(
     n1 = nn, n.ratio = n_ratio,
     lambda2 = lambda2, lambda1 = lambda1,
     t1 = t1, t2 = t2,

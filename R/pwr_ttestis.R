@@ -56,13 +56,13 @@
   pow.es <- NULL
   pow.pow <- NULL
   if (options$calculation == "sampleSize") {
-    pow.n <- ceiling(pwr.t2n.ratio(n_ratio = stats$n_ratio, d = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt))
+    pow.n <- ceiling(.pwrT2NRatio(n_ratio = stats$n_ratio, d = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt))
   }
   if (options$calculation == "effectSize") {
-    pow.es <- pwr.t2n.test(n1 = stats$n1, n2 = stats$n2, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$d
+    pow.es <- .pwrT2NTest(n1 = stats$n1, n2 = stats$n2, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$d
   }
   if (options$calculation == "power") {
-    pow.pow <- pwr.t2n.test(n1 = stats$n1, n2 = stats$n2, d = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
+    pow.pow <- .pwrT2NTest(n1 = stats$n1, n2 = stats$n2, d = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
   }
 
   return(list(n1 = pow.n, n2 = ceiling(pow.n * stats$n_ratio), es = pow.es, power = pow.pow))
@@ -251,7 +251,7 @@
 
   probs <- c(.5, .8, .95)
   probs_es <- try(sapply(probs, function(p) {
-    pwr.t2n.test(
+    .pwrT2NTest(
       n1 = n1, n2 = n2,
       sig.level = alpha, power = p,
       alternative = alt
@@ -288,12 +288,12 @@
   if (calc == "sampleSize") {
     table$addColumns(list(n1 = n1))
     table$addColumns(list(n2 = n2))
-    if (round(pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power, 3) == 1) {
+    if (round(.pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power, 3) == 1) {
       table$addFootnote(gettextf("Due to the rounding of sample sizes, the actual power can deviate from the target power. <b>Actual power: >0.999"))
     } else {
       table$addFootnote(gettextf(
         "Due to the rounding of sample sizes, the actual power can deviate from the target power. <b>Actual power: %1$s</b>",
-        round(pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power, 3)
+        round(.pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power, 3)
       ))
     }
   } else {
@@ -343,14 +343,14 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+      .pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
 
 
 
-  maxn <- try(pwr.t2n.ratio(
+  maxn <- try(.pwrT2NRatio(
     n_ratio = n_ratio,
     power = max(0.99, power),
     d = d,
@@ -385,7 +385,7 @@
   nn2 <- ceiling(n_ratio * nn)
 
   z.pwr <- try(sapply(dd, function(delta) {
-    pwr.t2n.test(
+    .pwrT2NTest(
       n1 = nn, n2 = nn2,
       d = delta,
       sig.level = alpha,
@@ -399,7 +399,7 @@
 
   z.delta <- try(sapply(nn, function(N) {
     n2 <- ceiling(n_ratio * N)
-    pwr.t2n.test(
+    .pwrT2NTest(
       n1 = N, n2 = n2,
       sig.level = alpha,
       power = power,
@@ -476,19 +476,19 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+      .pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
 
-  maxd <- try(pwr.t2n.test(n1 = n1, n2 = n2, power = max(0.999, power), sig.level = alpha, alternative = alt)$d)
+  maxd <- try(.pwrT2NTest(n1 = n1, n2 = n2, power = max(0.999, power), sig.level = alpha, alternative = alt)$d)
   if (inherits(maxd, "try-error")) {
     maxd <- d
   }
 
   dd <- seq(ps$mind, maxd, len = ps$curve.n)
 
-  y <- try(pwr.t2n.test(n1 = n1, n2 = n2, d = dd, sig.level = alpha, alternative = alt)$power)
+  y <- try(.pwrT2NTest(n1 = n1, n2 = n2, d = dd, sig.level = alpha, alternative = alt)$power)
   if (inherits(y, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the power curve. Try to enter less extreme values for the parameters"))
     return()
@@ -519,7 +519,7 @@
   d <- ifelse(calc == "effectSize",
     r$es,
     ifelse(calc == "sampleSize",
-      pwr.t2n.test(n1 = n1, n2 = n2, power = power, sig.level = alpha, alternative = alt)$d,
+      .pwrT2NTest(n1 = n1, n2 = n2, power = power, sig.level = alpha, alternative = alt)$d,
       lst$es
     )
   )
@@ -546,7 +546,7 @@
     pwr_string <- gettextf("only be sufficiently sensitive (power >%1$s)", round(power, 3))
   }
 
-  d50 <- try(pwr.t2n.test(n1 = n1, n2 = n2, sig.level = alpha, power = .5, alternative = alt)$d)
+  d50 <- try(.pwrT2NTest(n1 = n1, n2 = n2, sig.level = alpha, power = .5, alternative = alt)$d)
   if (inherits(d50, "try-error")) {
     return()
   }
@@ -590,12 +590,12 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+      .pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
 
-  maxn <- try(pwr.t2n.ratio(
+  maxn <- try(.pwrT2NRatio(
     n_ratio = n_ratio,
     power = max(0.99999, power),
     d = d,
@@ -617,7 +617,7 @@
 
   nn <- seq(minn, maxn)
 
-  y <- try(pwr.t2n.test(
+  y <- try(.pwrT2NTest(
     n1 = nn,
     n2 = ceiling(nn * lst$n_ratio),
     d = d, sig.level = alpha, alternative = alt
@@ -667,7 +667,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+      .pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -780,7 +780,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+      .pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -878,7 +878,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
+      .pwrT2NTest(n1 = n1, n2 = n2, d = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )

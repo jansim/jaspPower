@@ -55,14 +55,14 @@
 #### Compute results ----
 .computeTest1Pois <- function(jaspResults, options, stats) {
   ## Compute numbers for table
-  pow.n <- ceiling(pwr.pois.test(t = stats$t1, lambda0 = stats$p0, lambda1 = stats$p1, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
-  pow.lambda1 <- pwr.pois.test(t = stats$t1, n = stats$n, lambda0 = stats$p0, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$lambda1
-  pow.pow <- pwr.pois.test(t = stats$t1, n = stats$n, lambda0 = stats$p0, lambda1 = stats$p1, sig.level = stats$alpha, alternative = stats$alt)$power
+  pow.n <- ceiling(.pwrPoisTest(t = stats$t1, lambda0 = stats$p0, lambda1 = stats$p1, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
+  pow.lambda1 <- .pwrPoisTest(t = stats$t1, n = stats$n, lambda0 = stats$p0, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$lambda1
+  pow.pow <- .pwrPoisTest(t = stats$t1, n = stats$n, lambda0 = stats$p0, lambda1 = stats$p1, sig.level = stats$alpha, alternative = stats$alt)$power
 
   # Calculate probs_es here to have access to stats list
   probs <- c(.5, .8, .95)
   probs_es <- sapply(probs, function(pr) {
-    pwr.pois.test(
+    .pwrPoisTest(
       t = stats$t1,
       n = stats$n, lambda0 = stats$p0, sig.level = stats$alpha, power = pr,
       alternative = stats$alt
@@ -349,7 +349,7 @@
     pwr_string <- gettextf("only be sufficiently sensitive (power >%s)", round(power, 3))
   }
 
-  l50 <- pwr.pois.test(t = t, n = n, lambda0 = p0, sig.level = alpha, power = .5, alternative = alt)$lambda1
+  l50 <- .pwrPoisTest(t = t, n = n, lambda0 = p0, sig.level = alpha, power = .5, alternative = alt)$lambda1
   d50 <- (l50 - lambda0) / sqrt(l50)
 
   str <- gettextf(
@@ -544,10 +544,10 @@
   }
 
   minn <- 2
-  try <- try(pwr.pois.test(t = t, n = minn, lambda0 = p0, sig.level = alpha, power = power, alternative = alt))
+  try <- try(.pwrPoisTest(t = t, n = minn, lambda0 = p0, sig.level = alpha, power = power, alternative = alt))
   while (inherits(try, "try-error")) {
     minn <- minn + 1
-    try <- try(pwr.pois.test(t = t, n = minn, lambda0 = p0, sig.level = alpha, power = power, alternative = alt))
+    try <- try(.pwrPoisTest(t = t, n = minn, lambda0 = p0, sig.level = alpha, power = power, alternative = alt))
   }
 
   nn <- unique(ceiling(exp(seq(log(minn), log(maxn), len = ps$lens)) - .001))
@@ -563,14 +563,14 @@
   }
 
   z.pwr <- sapply(pp, function(p1) {
-    pwr.pois.test(t = t, n = nn, lambda0 = p0, lambda1 = p1, sig.level = alpha, alternative = alt)$power
+    .pwrPoisTest(t = t, n = nn, lambda0 = p0, lambda1 = p1, sig.level = alpha, alternative = alt)$power
   })
 
   z.delta <- sapply(nn, function(N) {
     if (options$esType == "h") {
-      2 * (asin(sqrt(pwr.pois.test(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1)) - asin(sqrt(p0)))
+      2 * (asin(sqrt(.pwrPoisTest(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1)) - asin(sqrt(p0)))
     } else {
-      abs(pwr.pois.test(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1 - p0)
+      abs(.pwrPoisTest(t = t, n = N, lambda0 = p0, sig.level = alpha, power = power, alternative = alt)$lambda1 - p0)
     }
   })
 
@@ -642,7 +642,7 @@
     }
   }
 
-  y <- pwr.pois.test(t = t, n = n, lambda0 = p0, lambda1 = pp, sig.level = alpha, alternative = alt)$power
+  y <- .pwrPoisTest(t = t, n = n, lambda0 = p0, lambda1 = pp, sig.level = alpha, alternative = alt)$power
   cols <- ps$pal(ps$pow.n.levels)
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
@@ -701,7 +701,7 @@
 
   nn <- seq(minn, maxn)
 
-  y <- pwr.pois.test(t = t, n = nn, lambda0 = p0, lambda1 = p1, sig.level = alpha, alternative = alt)$power
+  y <- .pwrPoisTest(t = t, n = nn, lambda0 = p0, lambda1 = p1, sig.level = alpha, alternative = alt)$power
 
   cols <- ps$pal(ps$pow.n.levels)
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)

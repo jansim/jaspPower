@@ -56,13 +56,13 @@
   pow.es <- NULL
   pow.pow <- NULL
   if (options$calculation == "sampleSize") {
-    pow.n <- ceiling(pwr.2var2n.test(n.ratio = stats$n_ratio, rho = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
+    pow.n <- ceiling(.pwr2Var2NTest(n.ratio = stats$n_ratio, rho = stats$es, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
   }
   if (options$calculation == "effectSize") {
-    pow.es <- pwr.2var2n.test(n = stats$n, n.ratio = stats$n2 / stats$n1, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$rho
+    pow.es <- .pwr2Var2NTest(n = stats$n, n.ratio = stats$n2 / stats$n1, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$rho
   }
   if (options$calculation == "power") {
-    pow.pow <- pwr.2var2n.test(n = stats$n1, n.ratio = stats$n2 / stats$n1, rho = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
+    pow.pow <- .pwr2Var2NTest(n = stats$n1, n.ratio = stats$n2 / stats$n1, rho = stats$es, sig.level = stats$alpha, alternative = stats$alt)$power
   }
 
   return(list(n1 = pow.n, n2 = ceiling(pow.n * stats$n_ratio), es = pow.es, power = pow.pow))
@@ -263,12 +263,12 @@
   probs <- c(.5, .8, .95)
   probs_es <- try(sapply(probs, function(p) {
     if (alt == "two.sided" && d < 1) {
-      pwr.2var2n.test(
+      .pwr2Var2NTest(
         n = n1, n.ratio = n_ratio, sig.level = alpha, power = p,
         alternative = alt
       )$rho[2]
     } else {
-      pwr.2var2n.test(
+      .pwr2Var2NTest(
         n = n1, n.ratio = n_ratio, sig.level = alpha, power = p,
         alternative = alt
       )$rho[1]
@@ -325,12 +325,12 @@
     table$addColumns(row)
   }
   if (calc == "sampleSize") {
-    if (round(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3) == 1) {
+    if (round(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3) == 1) {
       table$addFootnote(gettext("Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: >0.999"))
     } else {
       table$addFootnote(gettextf(
         "Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: %1$s</b>",
-        round(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3)
+        round(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power, 3)
       ))
     }
   }
@@ -372,14 +372,14 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      .pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
 
   ps <- .pwrPlotDefaultSettings
 
-  maxn <- try(ceiling(pwr.2var2n.test(
+  maxn <- try(ceiling(.pwr2Var2NTest(
     n.ratio = n_ratio,
     power = max(0.99, power),
     rho = d,
@@ -402,10 +402,10 @@
   }
 
   minn <- 2
-  try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+  try <- try(.pwr2Var2NTest(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
   while (inherits(try, "try-error")) {
     minn <- minn + 1
-    try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+    try <- try(.pwr2Var2NTest(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
   }
 
   nn <- unique(ceiling(exp(seq(log(minn), log(maxn), len = ps$lens)) - .001))
@@ -419,7 +419,7 @@
 
 
   z.pwr <- try(sapply(dd, function(delta) {
-    pwr.2var2n.test(
+    .pwr2Var2NTest(
       n = nn, n.ratio = n_ratio,
       rho = delta,
       sig.level = alpha,
@@ -433,7 +433,7 @@
 
 
   z.delta <- try(sapply(nn, function(N) {
-    pwr.2var2n.test(
+    .pwr2Var2NTest(
       n = N, n.ratio = n_ratio,
       sig.level = alpha,
       power = power,
@@ -510,14 +510,14 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      .pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
 
   ps <- .pwrPlotDefaultSettings
 
-  maxd <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, power = max(0.99, power), sig.level = alpha, alternative = alt)$rho)
+  maxd <- try(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, power = max(0.99, power), sig.level = alpha, alternative = alt)$rho)
   if (inherits(maxd, "try-error")) {
     mind <- ifelse(d < 1, d, 1)
     maxd <- ifelse(d < 1, 1, d)
@@ -537,7 +537,7 @@
 
   dd <- seq(mind, maxd, len = ps$curve.n)
 
-  y <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = dd, sig.level = alpha, alternative = alt)$power)
+  y <- try(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = dd, sig.level = alpha, alternative = alt)$power)
   if (inherits(y, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the power curve. Try to enter less extreme values for the parameters"))
     return()
@@ -570,7 +570,7 @@
     d <- ifelse(calc == "effectSize",
       d,
       ifelse(calc == "sampleSize",
-        try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[2]),
+        try(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[2]),
         lst$es
       )
     )
@@ -578,7 +578,7 @@
     d <- ifelse(calc == "effectSize",
       d,
       ifelse(calc == "sampleSize",
-        try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[1]),
+        try(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt)$rho[1]),
         lst$es
       )
     )
@@ -608,13 +608,13 @@
   }
 
   if (alt == "two.sided" && d < 1) {
-    d50 <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[2])
+    d50 <- try(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[2])
     if (inherits(d50, "try-error")) {
       return()
     }
     interval <- gettextf("1 > %1$s > %2$s", "\u03C1", round(d50, 3))
   } else {
-    d50 <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[1])
+    d50 <- try(.pwr2Var2NTest(n = n1, n.ratio = n_ratio, sig.level = alpha, power = .5, alternative = alt)$rho[1])
     if (inherits(d50, "try-error")) {
       return()
     }
@@ -663,14 +663,14 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      .pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
 
   ps <- .pwrPlotDefaultSettings
 
-  maxn <- try(ceiling(pwr.2var2n.test(
+  maxn <- try(ceiling(.pwr2Var2NTest(
     n.ratio = n_ratio,
     power = max(0.99999, power),
     rho = d,
@@ -686,15 +686,15 @@
 
 
   minn <- 2
-  try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+  try <- try(.pwr2Var2NTest(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
   while (inherits(try, "try-error")) {
     minn <- minn + 1
-    try <- try(pwr.2var2n.test(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
+    try <- try(.pwr2Var2NTest(n = minn, n.ratio = n_ratio, sig.level = alpha, power = power, alternative = alt))
   }
 
   nn <- seq(minn, maxn)
 
-  y <- try(pwr.2var2n.test(
+  y <- try(.pwr2Var2NTest(
     n = nn,
     n.ratio = n_ratio,
     rho = d, sig.level = alpha, alternative = alt
@@ -746,7 +746,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      .pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -885,7 +885,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      .pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -999,7 +999,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.2var2n.test(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
+      .pwr2Var2NTest(n = n1, n.ratio = n_ratio, rho = d, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )

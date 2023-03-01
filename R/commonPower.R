@@ -95,7 +95,7 @@
 
 # Transform a contour matrix (z) and vectors for it's columns and rows (x, y)
 # into a dataframe with 3 columns (x, y, z) to be used for ggplot.
-transformContourMatrix <- function(x, y, z) {
+.transformContourMatrix <- function(x, y, z) {
   return(data.frame(
     # Ncol and nrow are different here then one would expect (!)
     x = rep(x, ncol(z)),
@@ -104,10 +104,10 @@ transformContourMatrix <- function(x, y, z) {
   ))
 }
 
-# Workaround for failure of pwr::pwr.t2n.test
+# Workaround for failure of pwr::.pwrT2NTest
 # with large effect sizes - optimization here is
 # better
-pwr.t2n.test <- function(n1 = NULL, n2 = NULL, d = NULL, sig.level = .05, power = NULL, alternative = c("two.sided", "less", "greater")) {
+.pwrT2NTest <- function(n1 = NULL, n2 = NULL, d = NULL, sig.level = .05, power = NULL, alternative = c("two.sided", "less", "greater")) {
   if (!is.null(power)) {
     if (power >= 1) stop("Power cannot be 1.")
   }
@@ -157,7 +157,7 @@ pwr.t2n.test <- function(n1 = NULL, n2 = NULL, d = NULL, sig.level = .05, power 
   }
 }
 
-pwr.t2n.ratio <- function(n_ratio = 1, d, sig.level, power, alternative) {
+.pwrT2NRatio <- function(n_ratio = 1, d, sig.level, power, alternative) {
   if (power >= 1) {
     stop(gettext("Power cannot be 1"))
   }
@@ -192,7 +192,7 @@ pwr.t2n.ratio <- function(n_ratio = 1, d, sig.level, power, alternative) {
   return(ceiling(rt))
 }
 
-pwr.p.test <- function(p0 = NULL, p = NULL, n = NULL, sig.level = 0.05, power = NULL,
+.pwrPTest <- function(p0 = NULL, p = NULL, n = NULL, sig.level = 0.05, power = NULL,
                        alternative = c("two.sided", "less", "greater")) {
   if (is.null(p0)) {
     stop("p0 is a required argument")
@@ -273,7 +273,7 @@ pwr.p.test <- function(p0 = NULL, p = NULL, n = NULL, sig.level = 0.05, power = 
   ), class = "power.htest")
 }
 
-pwr.2p2n.test <- function(p0 = NULL, p1 = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
+.pwr2P2NTest <- function(p0 = NULL, p1 = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
                           alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(p1, n, n.ratio, power, sig.level), is.null)) !=
     1) {
@@ -364,7 +364,7 @@ pwr.2p2n.test <- function(p0 = NULL, p1 = NULL, n = NULL, n.ratio = 1, sig.level
   ), class = "power.htest")
 }
 
-pwr.var.test <- function(rho = NULL, n = NULL, sig.level = 0.05, power = NULL,
+.pwrVarTest <- function(rho = NULL, n = NULL, sig.level = 0.05, power = NULL,
                          alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(rho, n, power, sig.level), is.null)) !=
     1) {
@@ -451,7 +451,7 @@ pwr.var.test <- function(rho = NULL, n = NULL, sig.level = 0.05, power = NULL,
   ), class = "power.htest")
 }
 
-pwr.2var2n.test <- function(rho = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
+.pwr2Var2NTest <- function(rho = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
                             alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(rho, n, n.ratio, power, sig.level), is.null)) !=
     1) {
@@ -548,7 +548,7 @@ pwr.2var2n.test <- function(rho = NULL, n = NULL, n.ratio = 1, sig.level = 0.05,
   ), class = "power.htest")
 }
 
-pwr.pois.test <- function(n = NULL, power = NULL, sig.level = 0.05,
+.pwrPoisTest <- function(n = NULL, power = NULL, sig.level = 0.05,
                           lambda1 = NULL, lambda0 = NULL, t = 1, alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(n, lambda1, lambda0, power, sig.level), is.null)) != 1) {
     stop("exactly one of n, lambda1, lambda0, power, and sig.level must be NULL")
@@ -605,7 +605,7 @@ pwr.pois.test <- function(n = NULL, power = NULL, sig.level = 0.05,
   ), class = "power.htest"))
 }
 
-pwr.2pois2n.test <- function(n1 = NULL, n.ratio = 1, power = NULL, sig.level = 0.05,
+.pwr2Pois2NTest <- function(n1 = NULL, n.ratio = 1, power = NULL, sig.level = 0.05,
                              lambda1 = NULL, lambda2 = NULL, t1 = 1, t2 = 1, alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(n1, lambda1, lambda2, power, sig.level), is.null)) != 1) {
     stop("exactly one of n1, lambda1, lambda2, power, and sig.level must be NULL")
@@ -692,13 +692,4 @@ pwr.2pois2n.test <- function(n1 = NULL, n.ratio = 1, power = NULL, sig.level = 0
     lambda2 = lambda2, sig.level = sig.level, power = power,
     alternative = alternative, method = METHOD
   ), class = "power.htest"))
-}
-# Convenience function to draw segment lines
-.segment <- function(...) {
-  return(ggplot2::annotate(
-    geom = "segment",
-    size = 1,
-    linetype = "dashed",
-    ...
-  ))
 }

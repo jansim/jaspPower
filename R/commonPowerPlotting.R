@@ -35,8 +35,19 @@
   viridis::viridis(..., alpha = .pwrPlotDefaultSettings$background.alpha)
 }
 
+# ==== Minor Plotting Helpers ====
 
-# ==== Plotting Functions ====
+# Convenience function to draw segment lines
+.segment <- function(...) {
+  return(ggplot2::annotate(
+    geom = "segment",
+    size = 1,
+    linetype = "dashed",
+    ...
+  ))
+}
+
+# ==== Major Plotting Functions ====
 .plotPowerContour <- function(options, state, ggtheme, ...) {
   calc <- options$calculation
 
@@ -98,7 +109,7 @@
   z.pwr[z.pwr == 1] <- 0.999999999
 
   p <- ggplot2::ggplot(
-    transformContourMatrix(x = nn, y = dd, z = z.pwr),
+    .transformContourMatrix(x = nn, y = dd, z = z.pwr),
     ggplot2::aes(x = x, y = y, z = z)
   ) +
     ggplot2::geom_contour_filled(breaks = pretty(c(0, 1), n = ps$pow.n.levels), alpha = ps$background.alpha) +
@@ -302,5 +313,3 @@
 
   return(p)
 }
-
-

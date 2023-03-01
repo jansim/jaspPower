@@ -56,13 +56,13 @@
   pow.p <- NULL
   pow.pow <- NULL
   if (options$calculation == "sampleSize") {
-    pow.n <- ceiling(pwr.p.test(p0 = stats$p0, p = stats$p1, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
+    pow.n <- ceiling(.pwrPTest(p0 = stats$p0, p = stats$p1, sig.level = stats$alpha, power = stats$pow, alternative = stats$alt)$n)
   }
   if (options$calculation == "effectSize") {
-    pow.p <- pwr.p.test(n = stats$n, p0 = stats$p0, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$p
+    pow.p <- .pwrPTest(n = stats$n, p0 = stats$p0, power = stats$pow, sig.level = stats$alpha, alternative = stats$alt)$p
   }
   if (options$calculation == "power") {
-    pow.pow <- pwr.p.test(n = stats$n, p0 = stats$p0, p = stats$p1, sig.level = stats$alpha, alternative = stats$alt)$power
+    pow.pow <- .pwrPTest(n = stats$n, p0 = stats$p0, p = stats$p1, sig.level = stats$alpha, alternative = stats$alt)$power
   }
 
   return(list(n = pow.n, p = pow.p, power = pow.pow))
@@ -244,7 +244,7 @@
   p1 <- ifelse(calc == "effectSize",
     r$p,
     ifelse(calc == "sampleSize",
-      pwr.p.test(n = n, p0 = p0, power = power, sig.level = alpha, alternative = alt)$p,
+      .pwrPTest(n = n, p0 = p0, power = power, sig.level = alpha, alternative = alt)$p,
       lst$p1
     )
   )
@@ -269,7 +269,7 @@
     pwr_string <- gettextf("only be sufficiently sensitive (power >%1$s)", round(power, 3))
   }
 
-  p50 <- try(pwr.p.test(n = n, p0 = p0, sig.level = alpha, power = .5, alternative = alt)$p)
+  p50 <- try(.pwrPTest(n = n, p0 = p0, sig.level = alpha, power = .5, alternative = alt)$p)
   if (inherits(p50, "try-error")) {
     return()
   }
@@ -344,7 +344,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
+      .pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -408,12 +408,12 @@
   }
 
   if (calc == "sampleSize") {
-    if (round(pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power, 3) == 1) {
+    if (round(.pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power, 3) == 1) {
       table$addFootnote(gettext("Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: >0.999"))
     } else {
       table$addFootnote(gettextf(
         "Due to the rounding of the sample size, the actual power can deviate from the target power. <b>Actual power: %1$s</b>",
-        round(pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power, 3)
+        round(.pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power, 3)
       ))
     }
   }
@@ -478,7 +478,7 @@
 
   probs <- c(.5, .8, .95)
   probs_es <- try(sapply(probs, function(pr) {
-    pwr.p.test(
+    .pwrPTest(
       n = n, p0 = p0, sig.level = alpha, power = pr,
       alternative = alt
     )$p[1]
@@ -538,7 +538,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
+      .pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -551,7 +551,7 @@
     ps$maxd <- abs(2 * (asin(sqrt(max(0.9999, p1))) - asin(sqrt(p0))))
   }
 
-  maxn <- try(ceiling(pwr.p.test(
+  maxn <- try(ceiling(.pwrPTest(
     power = max(0.99, power),
     p0 = p0, p = p1,
     sig.level = alpha,
@@ -573,10 +573,10 @@
   }
 
   minn <- 2
-  try <- try(pwr.p.test(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
+  try <- try(.pwrPTest(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
   while (inherits(try, "try-error")) {
     minn <- minn + 1
-    try <- try(pwr.p.test(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
+    try <- try(.pwrPTest(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
   }
 
   nn <- unique(ceiling(exp(seq(log(minn), log(maxn), len = ps$lens)) - .001))
@@ -589,7 +589,7 @@
   }
 
   z.pwr <- try(sapply(pp, function(p) {
-    pwr.p.test(n = nn, p0 = p0, p = p, sig.level = alpha, alternative = alt)$power
+    .pwrPTest(n = nn, p0 = p0, p = p, sig.level = alpha, alternative = alt)$power
   }))
   if (inherits(z.pwr, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
@@ -597,7 +597,7 @@
   }
 
   z.delta <- try(sapply(nn, function(N) {
-    abs(2 * (asin(sqrt(pwr.p.test(n = N, p0 = p0, sig.level = alpha, power = power, alternative = alt)$p)) - asin(sqrt(p0))))
+    abs(2 * (asin(sqrt(.pwrPTest(n = N, p0 = p0, sig.level = alpha, power = power, alternative = alt)$p)) - asin(sqrt(p0))))
   }))
   if (inherits(z.delta, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the Power Contour plot. Try to enter less extreme values for the parameters"))
@@ -656,7 +656,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
+      .pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -676,7 +676,7 @@
     pp <- sin(0.5 * dd + asin(sqrt(p0)))^2
   }
 
-  y <- try(pwr.p.test(n = n, p0 = p0, p = pp, sig.level = alpha, alternative = alt)$power)
+  y <- try(.pwrPTest(n = n, p0 = p0, p = pp, sig.level = alpha, alternative = alt)$power)
   if (inherits(y, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the power curve. Try to enter less extreme values for the parameters"))
     return()
@@ -690,7 +690,7 @@
     } else {
       pp <- sin(0.5 * dd + asin(sqrt(p0)))^2
     }
-    y <- pwr.p.test(n = n, p0 = p0, p = pp, sig.level = alpha, alternative = alt)$power
+    y <- .pwrPTest(n = n, p0 = p0, p = pp, sig.level = alpha, alternative = alt)$power
   }
   cols <- ps$pal(ps$pow.n.levels)
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
@@ -737,7 +737,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
+      .pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -750,7 +750,7 @@
     ps$maxd <- abs(2 * (asin(sqrt(max(0.99, p1))) - asin(sqrt(p0))))
   }
 
-  maxn <- try(ceiling(pwr.p.test(
+  maxn <- try(ceiling(.pwrPTest(
     power = max(0.9999, power),
     p0 = p0, p = p1,
     sig.level = alpha,
@@ -764,15 +764,15 @@
   }
 
   minn <- 2
-  try <- try(pwr.p.test(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
+  try <- try(.pwrPTest(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
   while (inherits(try, "try-error")) {
     minn <- minn + 1
-    try <- try(pwr.p.test(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
+    try <- try(.pwrPTest(n = minn, p0 = p0, sig.level = alpha, power = power, alternative = alt))
   }
 
   nn <- seq(minn, maxn)
 
-  y <- try(pwr.p.test(n = nn, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power)
+  y <- try(.pwrPTest(n = nn, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power)
   if (inherits(y, "try-error")) {
     image$setError(gettext("The specified design leads to (an) unsolvable equation(s) while constructing the 'Power Curve by N' plot. Try to enter less extreme values for the parameters"))
     return()
@@ -837,7 +837,7 @@
   power <- ifelse(calc == "power",
     r$power,
     ifelse(calc == "sampleSize",
-      pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
+      .pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power,
       lst$pow
     )
   )
@@ -950,7 +950,7 @@
   d <- abs(2 * (asin(sqrt(p1)) - asin(sqrt(p0))))
   alpha <- ifelse(calc == "alpha", r$alpha, lst$alpha)
   alt <- lst$alt
-  power <- pwr.p.test(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power
+  power <- .pwrPTest(n = n, p0 = p0, p = p1, sig.level = alpha, alternative = alt)$power
 
   if (options[["setSeed"]]) {
     set.seed(options[["seed"]])
