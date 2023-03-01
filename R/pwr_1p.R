@@ -1,7 +1,7 @@
 # Originally based on https://github.com/richarddmorey/jpower
 
 .runTest1P <- function(jaspResults, options) {
-  stats <- .prepareStats(jaspResults, options)
+  stats <- .prepareStats(options)
 
   ## Compute results
   results <- try(.computeTest1P(jaspResults, options, stats))
@@ -617,7 +617,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .powerContour(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerContour(options, state = state, ggtheme = pwr_plot_theme())
 }
 
 .preparePowerCurveESTest1P <- function(jaspResults, options, r, lst) {
@@ -696,7 +696,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n = n, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .powerCurveES(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerCurveES(options, state = state, ggtheme = pwr_plot_theme())
 }
 
 .preparePowerCurveNTest1P <- function(jaspResults, options, r, lst) {
@@ -797,7 +797,7 @@
     alpha = alpha,
     pow = power
   )
-  image$plotObject <- .powerCurveN(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerCurveN(options, state = state, ggtheme = pwr_plot_theme())
 }
 
 .preparePowerDistTest1P <- function(jaspResults, options, r, lst) {
@@ -888,7 +888,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims)
-  image$plotObject <- .powerDist(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerDist(options, state = state, ggtheme = pwr_plot_theme())
 }
 
 

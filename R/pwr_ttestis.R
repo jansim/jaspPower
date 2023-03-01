@@ -1,7 +1,7 @@
 # Originally based on https://github.com/richarddmorey/jpower
 
 .runTtestIS <- function(jaspResults, options) {
-  stats <- .prepareStats(jaspResults, options)
+  stats <- .prepareStats(options)
 
   ## Compute results
   results <- try(.computeTtestIS(jaspResults, options, stats))
@@ -424,7 +424,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .powerContour(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerContour(options, state = state, ggtheme = pwr_plot_theme())
 }
 .populateContourTextTtestIS <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["contourText"]]
@@ -497,7 +497,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n1 = n1, n2 = n2, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .powerCurveES(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerCurveES(options, state = state, ggtheme = pwr_plot_theme())
 }
 .populatePowerCurveESTextTtestIS <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveESText"]]
@@ -636,7 +636,7 @@
   )
 
   state <- list(n = n1, cols = cols, nn = nn, y = y, yrect = yrect, lims = lims, delta = d, alpha = alpha, n_ratio = n_ratio, pow = power)
-  image$plotObject <- .powerCurveN(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerCurveN(options, state = state, ggtheme = pwr_plot_theme())
 }
 .preparePowerDistTtestIS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
@@ -715,7 +715,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims)
-  image$plotObject <- .powerDist(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerDist(options, state = state, ggtheme = pwr_plot_theme())
 }
 .populatePowerCurveNTextTtestIS <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveNText"]]

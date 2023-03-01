@@ -69,7 +69,7 @@
 }
 
 #### Init + run functions ----
-.prepareStats <- function(jaspResults, options) {
+.prepareStats <- function(options) {
   ## Get options from interface
   n <- options$sampleSize
   n_ratio <- options$sampleSizeRatio
@@ -159,7 +159,7 @@
 }
 
 # ==== Plotting Functions ====
-.powerContour <- function(jaspResults, options, state, ggtheme, ...) {
+.powerContour <- function(options, state, ggtheme, ...) {
   calc <- options$calculation
 
   z.delta <- state$z.delta
@@ -250,7 +250,7 @@
   return(p)
 }
 
-.powerCurveES <- function(jaspResults, options, state, ggtheme, ...) {
+.powerCurveES <- function(options, state, ggtheme, ...) {
   y <- state$y
   cols <- state$cols
   yrect <- state$yrect
@@ -317,7 +317,7 @@
   return(p)
 }
 
-.powerCurveN <- function(jaspResults, options, state, ggtheme, ...) {
+.powerCurveN <- function(options, state, ggtheme, ...) {
   cols <- state$cols
   yrect <- state$yrect
   lims <- state$lims
@@ -382,7 +382,7 @@
   return(p)
 }
 
-.powerDist <- function(jaspResults, options, state, ggtheme, ...) {
+.powerDist <- function(options, state, ggtheme, ...) {
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
     options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
     es <- "|\u03B4|"

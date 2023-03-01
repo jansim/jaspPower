@@ -1,7 +1,7 @@
 # Originally based on https://github.com/richarddmorey/jpower
 
 .runZtestOneS <- function(jaspResults, options) {
-  stats <- .prepareStats(jaspResults, options)
+  stats <- .prepareStats(options)
 
   ## Compute results
   results <- try(.computeZtestOneS(jaspResults, options, stats))
@@ -550,7 +550,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .powerContour(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerContour(options, state = state, ggtheme = pwr_plot_theme())
 }
 .preparePowerCurveESZtestOneS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveES"]]
@@ -605,7 +605,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n = n, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .powerCurveES(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerCurveES(options, state = state, ggtheme = pwr_plot_theme())
 }
 .preparePowerCurveNZtestOneS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveN"]]
@@ -688,7 +688,7 @@
     alpha = alpha,
     pow = power
   )
-  image$plotObject <- .powerCurveN(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerCurveN(options, state = state, ggtheme = pwr_plot_theme())
 }
 .preparePowerDistZtestOneS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
@@ -770,7 +770,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims)
-  image$plotObject <- .powerDist(jaspResults, options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .powerDist(options, state = state, ggtheme = pwr_plot_theme())
 }
 
 #### Generate synthetic dataset ----
