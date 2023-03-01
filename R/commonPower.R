@@ -183,7 +183,7 @@
   }
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
     options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
-    es <- "|\u03B4|"
+    es <- paste0("|", "\u03B4", "|")
   }
   if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
     es <- "|h|"
