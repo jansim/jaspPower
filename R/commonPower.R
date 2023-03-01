@@ -1,4 +1,10 @@
 .check <- function(jaspResults, options) {
+  # Overwrite options for certain tests
+  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
+    options$effectSize <- options$varianceRatio
+  }
+
+  # Check options for problems
   alternative <- options$alternative
   d <- ifelse(options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio", options$varianceRatio, options$effectSize)
   p0 <- options$baselineProportion
@@ -58,15 +64,13 @@
       .quitAnalysis(gettext("Invalid alternative."))
     }
   }
+
+  return(options)
 }
 
 #### Init + run functions ----
 .prepareStats <- function(jaspResults, options) {
   ## Get options from interface
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
-    options$effectSize <- options$varianceRatio
-  }
-
   n <- options$sampleSize
   n_ratio <- options$sampleSizeRatio
   pow <- options$power

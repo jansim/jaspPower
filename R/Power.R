@@ -1,6 +1,8 @@
 Power <- function(jaspResults, dataset, options) {
-  .check(jaspResults, options)
+  # Check options and overwrite certain settings if necessary
+  options <- .check(jaspResults, options)
 
+  # Run the appropriate test
   if (options$test == "independentSamplesTTest") {
     .runTtestIS(jaspResults, options)
   } else if (options$test == "pairedSamplesTTest") {
