@@ -193,7 +193,7 @@
 }
 
 .pwrPTest <- function(p0 = NULL, p = NULL, n = NULL, sig.level = 0.05, power = NULL,
-                       alternative = c("two.sided", "less", "greater")) {
+                      alternative = c("two.sided", "less", "greater")) {
   if (is.null(p0)) {
     stop("p0 is a required argument")
   }
@@ -274,7 +274,7 @@
 }
 
 .pwr2P2NTest <- function(p0 = NULL, p1 = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
-                          alternative = c("two.sided", "less", "greater")) {
+                         alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(p1, n, n.ratio, power, sig.level), is.null)) !=
     1) {
     stop("exactly one of p1, n, n.ratio, power, and sig.level must be NULL")
@@ -365,7 +365,7 @@
 }
 
 .pwrVarTest <- function(rho = NULL, n = NULL, sig.level = 0.05, power = NULL,
-                         alternative = c("two.sided", "less", "greater")) {
+                        alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(rho, n, power, sig.level), is.null)) !=
     1) {
     stop("exactly one of rho, n, power, and sig.level must be NULL")
@@ -452,7 +452,7 @@
 }
 
 .pwr2Var2NTest <- function(rho = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
-                            alternative = c("two.sided", "less", "greater")) {
+                           alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(rho, n, n.ratio, power, sig.level), is.null)) !=
     1) {
     stop("exactly one of rho, n, n.ratio, power, and sig.level must be NULL")
@@ -549,7 +549,7 @@
 }
 
 .pwrPoisTest <- function(n = NULL, power = NULL, sig.level = 0.05,
-                          lambda1 = NULL, lambda0 = NULL, t = 1, alternative = c("two.sided", "less", "greater")) {
+                         lambda1 = NULL, lambda0 = NULL, t = 1, alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(n, lambda1, lambda0, power, sig.level), is.null)) != 1) {
     stop("exactly one of n, lambda1, lambda0, power, and sig.level must be NULL")
   }
@@ -606,7 +606,7 @@
 }
 
 .pwr2Pois2NTest <- function(n1 = NULL, n.ratio = 1, power = NULL, sig.level = 0.05,
-                             lambda1 = NULL, lambda2 = NULL, t1 = 1, t2 = 1, alternative = c("two.sided", "less", "greater")) {
+                            lambda1 = NULL, lambda2 = NULL, t1 = 1, t2 = 1, alternative = c("two.sided", "less", "greater")) {
   if (sum(sapply(list(n1, lambda1, lambda2, power, sig.level), is.null)) != 1) {
     stop("exactly one of n1, lambda1, lambda2, power, and sig.level must be NULL")
   }
