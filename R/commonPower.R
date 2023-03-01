@@ -1,74 +1,6 @@
-.check <- function(jaspResults, options) {
-  # Overwrite options for certain tests
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
-    options$effectSize <- options$varianceRatio
-  }
+# ==== Major Helper Functions ====
 
-  # Check options for problems
-  alternative <- options$alternative
-  d <- ifelse(options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio", options$varianceRatio, options$effectSize)
-  p0 <- options$baselineProportion
-  p1 <- options$comparisonProportion
-  # Check whether the provided effect size is valid
-  if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
-    if (d == 0) {
-      .quitAnalysis(gettext("Effect size can't be 0."))
-    }
-  } else if (options$test == "oneSampleProportion" && options$calculation != "effectSize") {
-    if (alternative == "twoSided") {
-      if (p1 == p0) {
-        .quitAnalysis(gettext("The comparison proportion can't be equal to the hypothesized proportion with a 'Two-sided' alternative hypothesis."))
-      }
-    } else if (alternative == "less") {
-      if (p1 > p0) {
-        .quitAnalysis(gettext("The comparison proportion has to be less than the hypothesized proportion with an alternative hypothesis of 'Less'."))
-      }
-    } else if (alternative == "greater") {
-      if (p1 < p0) {
-        .quitAnalysis(gettext("The comparison proportion has to be greater than the hypothesized proportion with an alternative hypothesis of 'Greater'."))
-      }
-    } else {
-      .quitAnalysis(gettext("Invalid alternative."))
-    }
-  } else if (options$test == "twoSamplesProportion" && options$calculation != "effectSize") {
-    if (alternative == "twoSided") {
-      if (p1 == p0) {
-        .quitAnalysis(gettext("The comparison proportion can't be equal to the baseline proportion with a 'Two-sided' alternative hypothesis."))
-      }
-    } else if (alternative == "less") {
-      if (p1 > p0) {
-        .quitAnalysis(gettext("The comparison proportion has to be less than the baseline proportion with an alternative hypothesis of 'Less'."))
-      }
-    } else if (alternative == "greater") {
-      if (p1 < p0) {
-        .quitAnalysis(gettext("The comparison proportion has to be greater than the baseline proportion with an alternative hypothesis of 'Greater'."))
-      }
-    } else {
-      .quitAnalysis(gettext("Invalid alternative."))
-    }
-  } else if ((options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") && options$calculation != "effectSize") {
-    if (alternative == "twoSided") {
-      if (d == 1) {
-        .quitAnalysis(gettext("The variance ratio can't be 1 with a 'Two-sided' alternative hypothesis."))
-      }
-    } else if (alternative == "less") {
-      if (d >= 1) {
-        .quitAnalysis(gettext("The variance ratio has to be less than 1 with an alternative hypothesis 'Less'."))
-      }
-    } else if (alternative == "greater") {
-      if (d <= 1) {
-        .quitAnalysis(gettext("The variance ratio has to be greater than 1 with an alternative hypothesis of 'Greater'."))
-      }
-    } else {
-      .quitAnalysis(gettext("Invalid alternative."))
-    }
-  }
-
-  return(options)
-}
-
-#### Init + run functions ----
+# Prepare the statistics in a common format
 .prepareStats <- function(options) {
   ## Get options from interface
   n <- options$sampleSize
@@ -102,9 +34,10 @@
     ),
     alpha = alpha
   )
+  return(stats)
 }
 
-# ==== Functions to Populate Text ====
+# Helper to populate the initial text that is shown
 .populateIntro <- function(jaspResults, options) {
   calc <- options$calculation
 
@@ -158,269 +91,614 @@
   html[["text"]] <- str
 }
 
-# ==== Plotting Functions ====
-.plotPowerContour <- function(options, state, ggtheme, ...) {
-  calc <- options$calculation
+# ==== Small Helper Functions ====
 
-  z.delta <- state$z.delta
-  z.pwr <- state$z.pwr
-  ps <- state$ps
-  pow <- state$pow
-  n <- state$n
-  n1 <- state$n1
-  n2 <- state$n2
-  alpha <- state$alpha
-  dd <- state$dd
-  nn <- state$nn
-  ps <- state$ps
-  delta <- state$delta
-  n_ratio <- state$n_ratio
-
-  if (is.null(n_ratio)) {
-    # Use ratio of 1 for one or paired samples
-    n_ratio <- 1
-  }
-
-  if (is.null(n)) {
-    # Add n for indipendent samples
-    n <- n1
-  }
-  if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
-    es <- paste0("|", "\u03B4", "|")
-  }
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
-    es <- "|h|"
-  }
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
-    es <- "\u03C1"
-  }
-
-
-  # If group sizes differ, provide a secondary axis
-  secondary_axis <- ggplot2::waiver()
-  if (n_ratio != 1) {
-    secondary_axis <- ggplot2::sec_axis(
-      ~ . * n_ratio,
-      name = gettext("Sample size (group 2)")
-    )
-  }
-
-  # Checking whether geom_contour_filled is availaible
-  # (as it is e.g. not yet in the ggplot2 version of JASP 0.14.1)
-  # TODO: Remove this check in the future
-  if (!exists("geom_contour_filled", where = asNamespace("ggplot2"), mode = "function")) {
-    return(
-      ggplot2::ggplot() +
-        ggplot2::labs(title = "ERROR: The power contour plot needs a newer version of ggplot / JASP to function")
-    )
-  }
-
-  # Dirty fix for a bug where ggplot is unable to properly bin values of 1...
-  z.pwr[z.pwr == 1] <- 0.999999999
-
-  p <- ggplot2::ggplot(
-    transformContourMatrix(x = nn, y = dd, z = z.pwr),
-    ggplot2::aes(x = x, y = y, z = z)
-  ) +
-    ggplot2::geom_contour_filled(breaks = pretty(c(0, 1), n = ps$pow.n.levels), alpha = ps$background.alpha) +
-    ggplot2::scale_x_log10(sec.axis = secondary_axis) +
-    ggplot2::labs(
-      x = gettext("Sample size (group 1)"),
-      y = gettextf("Hypothetical effect size (%s)", es),
-      fill = gettext("Power")
-    ) +
-    ggplot2::guides(fill = ggplot2::guide_colorsteps(barheight = ggplot2::unit(7, "cm"))) +
-    # Highlight boundary of power
-    # Note: This doesn't render quite perfectly right now
-    # ggplot2::scale_y_continuous(limits = c(min(dd), max(dd))) +
-    # ggplot2::annotate("line", x = nn, y = z.delta) +
-    # Highlight N on axis
-    .segment(
-      x = n, y = delta, xend = n, yend = min(dd)
-    ) +
-    # Highlight effect size on axis
-    .segment(
-      x = n, y = delta, xend = min(nn), yend = delta
-    ) +
-    # Add point highlighting intersection
-    ggplot2::annotate("point", x = n, y = delta, size = 3) +
-    ggtheme
-
-  return(p)
+# Transform a contour matrix (z) and vectors for it's columns and rows (x, y)
+# into a dataframe with 3 columns (x, y, z) to be used for ggplot.
+transformContourMatrix <- function(x, y, z) {
+  return(data.frame(
+    # Ncol and nrow are different here then one would expect (!)
+    x = rep(x, ncol(z)),
+    y = rep(y, each = nrow(z)),
+    z = as.numeric(z)
+  ))
 }
 
-.plotPowerCurveES <- function(options, state, ggtheme, ...) {
-  y <- state$y
-  cols <- state$cols
-  yrect <- state$yrect
-  pow <- state$pow
-  n1 <- state$n1
-  n2 <- state$n2
-  n <- state$n
-  alpha <- state$alpha
-  dd <- state$dd
-  delta <- state$delta
-
-  if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
-    es <- "|\u03B4|"
+# Workaround for failure of pwr::pwr.t2n.test
+# with large effect sizes - optimization here is
+# better
+pwr.t2n.test <- function(n1 = NULL, n2 = NULL, d = NULL, sig.level = .05, power = NULL, alternative = c("two.sided", "less", "greater")) {
+  if (!is.null(power)) {
+    if (power >= 1) stop("Power cannot be 1.")
   }
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
-    es <- "|h|"
-  }
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
-    es <- "\u03C1"
-  }
-
-  ps <- ttestPlotSettings
-
-  if (is.null(n2)) {
-    # Paired or one sample
-    plot_subtitle <- substitute(
-      paste(N == n, ", ", alpha == a),
-      list(a = alpha, n = n)
-    )
+  if (is.null(d)) {
+    if (power < sig.level) stop("power < alpha")
+    x <- try(pwr::pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = sig.level, power = power, alternative = alternative), silent = TRUE)
+    if (inherits(x, "try-error")) {
+      effN <- n1 * n2 / (n1 + n2)
+      df <- n1 + n2 - 2
+      if (length(alternative) > 1) alternative == alternative[1]
+      if (alternative == "two.sided") {
+        crit <- qt(1 - sig.level / 2, df)
+        es <- uniroot(function(x) {
+          d <- exp(log(x) - log1p(-x))
+          ncp <- d * sqrt(effN)
+          pow <- pt(-crit, df, ncp) + 1 - pt(crit, df, ncp)
+          log(pow) - log(power)
+        }, interval = c(0, 1))$root
+        d <- exp(log(es) - log1p(-es))
+      } else if (alternative %in% c("greater", "less")) {
+        crit <- qt(1 - sig.level, df)
+        es <- uniroot(function(x) {
+          d <- exp(log(x) - log1p(-x))
+          ncp <- d * sqrt(effN)
+          pow <- 1 - pt(crit, df, ncp)
+          log(pow) - log(power)
+        }, interval = c(0, 1))$root
+        d <- exp(log(es) - log1p(-es))
+        d <- ifelse(alternative == "less", -d, d)
+      } else {
+        stop("Invalid alternative")
+      }
+      METHOD <- c("t test power calculation")
+      ret <- structure(
+        list(
+          n1 = n1, n2 = n2, d = d, sig.level = sig.level,
+          power = power, alternative = alternative, method = METHOD
+        ),
+        class = "power.htest"
+      )
+      return(ret)
+    } else {
+      return(x)
+    }
   } else {
-    # Indipendent Samples
-    plot_subtitle <- substitute(
-      paste(N[1] == n1, ", ", N[2] == n2, ", ", alpha == a),
-      list(a = alpha, n1 = n1, n2 = n2)
-    )
+    return(pwr::pwr.t2n.test(n1 = n1, n2 = n2, d = d, sig.level = sig.level, power = power, alternative = alternative))
   }
-
-  p <- ggplot2::ggplot(data.frame(), ggplot2::aes(x = dd, y = y))
-
-  # Add shaded background
-  for (i in 1:ps$pow.n.levels) {
-    p <- p +
-      ggplot2::annotate(geom = "rect", xmin = min(dd), ymin = yrect[i], xmax = max(dd), ymax = yrect[i + 1], fill = cols[i])
-  }
-
-  p <- p +
-    ggplot2::geom_line(size = 1.5) +
-    ggplot2::labs(
-      x = gettextf("Hypothetical effect size (%s)", es),
-      y = gettext("Power"),
-      subtitle = plot_subtitle
-    ) +
-    .segment(
-      x = delta, y = pow,
-      xend = delta, yend = 0
-    ) +
-    .segment(
-      x = min(dd), y = pow,
-      xend = delta, yend = pow,
-    ) +
-    ggtheme
-
-  return(p)
 }
 
-.plotPowerCurveN <- function(options, state, ggtheme, ...) {
-  cols <- state$cols
-  yrect <- state$yrect
-  lims <- state$lims
-  delta <- state$delta
-  alpha <- state$alpha
-  n_ratio <- state$n_ratio
-  nn <- state$nn
-  pow <- state$pow
-  n <- state$n
-  y <- state$y
-
-  if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
-    es <- "|\u03B4|"
+pwr.t2n.ratio <- function(n_ratio = 1, d, sig.level, power, alternative) {
+  if (power >= 1) {
+    stop(gettext("Power cannot be 1"))
   }
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
-    es <- "|h|"
-  }
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
-    es <- "\u03C1"
-  }
-
-  ps <- ttestPlotSettings
-
-  if (is.null(n_ratio)) {
-    # Paired or one sample
-    plot_subtitle <- gettextf("%s = %s, %s = %s", es, round(delta, 3), "\u03B1", alpha)
-  } else {
-    # Indipendent Samples
-    plot_subtitle <- gettextf("%s = %s, N%s = %s %s N%s, %s = %s", es, round(delta, 3), "\u2082", n_ratio, "\u00D7", "\u2081", "\u03B1", alpha)
-  }
-
-  # Creat basic plot
-  p <- ggplot2::ggplot(data.frame(), ggplot2::aes(x = nn, y = y))
-
-  # Add shaded background
-  for (i in 1:ps$pow.n.levels) {
-    p <- p +
-      ggplot2::annotate(geom = "rect", xmin = lims$xlim[1], ymin = yrect[i], xmax = lims$xlim[2], ymax = yrect[i + 1], fill = cols[i])
-  }
-
-  # Add main plot
-  p <- p +
-    ggplot2::geom_line(size = 1.5) +
-    ggplot2::scale_x_log10(limits = lims$xlim) +
-    ggplot2::scale_y_continuous(limits = lims$ylim) +
-    ggplot2::labs(
-      x = gettext("Sample size (group 1)"),
-      y = gettext("Power"),
-      subtitle = plot_subtitle
-    ) +
-    .segment(
-      x = n, y = pow,
-      xend = n, yend = 0
-    ) +
-    .segment(
-      x = min(nn), y = pow,
-      xend = n, yend = pow,
-    ) +
-    ggtheme
-
-  return(p)
+  fn <- Vectorize(function(n1) {
+    effN <- n1 * n_ratio / (1 + n_ratio)
+    df <- n1 * (1 + n_ratio) - 2
+    ncp <- sqrt(effN) * d
+    if (alternative == "two.sided") {
+      if (d == 0) {
+        stop(gettext("Effect size can't be 0 with a two-sided alternative hypothesis."))
+      }
+      critt <- qt(sig.level / 2, df)
+      pow <- pt(critt, df, ncp) + 1 - pt(-critt, df, ncp)
+    } else if (alternative == "less") {
+      if (d >= 0) {
+        stop(gettext("Effect size has to be lower than 0 with an alternative of lesser."))
+      }
+      critt <- qt(sig.level, df)
+      pow <- pt(critt, df, ncp)
+    } else if (alternative == "greater") {
+      if (d <= 0) {
+        stop(gettext("Effect size has to be greater than 0 with an alternative of greater."))
+      }
+      critt <- qt(1 - sig.level, df)
+      pow <- 1 - pt(critt, df, ncp)
+    } else {
+      stop(gettext("Invalid alternative."))
+    }
+    return(log(pow) - log(power))
+  }, "n1")
+  rt <- uniroot(fn, c(ceiling(3 / (1 + n_ratio)), 1e+09))$root
+  return(ceiling(rt))
 }
 
-.plotPowerDist <- function(options, state, ggtheme, ...) {
-  if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
-    options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
-    es <- "|\u03B4|"
+pwr.p.test <- function(p0 = NULL, p = NULL, n = NULL, sig.level = 0.05, power = NULL,
+                       alternative = c("two.sided", "less", "greater")) {
+  if (is.null(p0)) {
+    stop("p0 is a required argument")
   }
-  if (options$test == "oneSampleProportion" || options$test == "twoSamplesProportion") {
-    es <- "|h|"
+  if (sum(sapply(list(p, n, power, sig.level), is.null)) != 1) {
+    stop("exactly one of p, n, power, and sig.level must be NULL")
   }
-  if (options$test == "oneSampleVarianceRatio" || options$test == "twoSamplesVarianceRatio") {
-    es <- ifelse(state$d < 1, "1/\u03C1", "\u03C1")
+  if (!is.null(n) && n < 2) {
+    stop("number of observations in the first group must be at least 2")
   }
-
-  ps <- ttestPlotSettings
-
-  if (is.null(state)) {
-    return(FALSE)
+  if (!is.null(sig.level) && (!is.numeric(sig.level) || any(0 > sig.level | sig.level > 1))) {
+    stop("sig.level must be between 0 and 1")
   }
-
-  curves <- state$curves
-  rect <- state$rect
-  lims <- state$lims
-  alt <- options$alternative
-
-  themeSpec <- ggplot2::theme(
-    axis.text.y = ggplot2::element_blank(),
-    axis.ticks.y = ggplot2::element_blank(),
-    legend.position = "none"
+  if (!is.null(power) && (!is.numeric(power) || any(0 > power | power > 1))) {
+    stop("power must be between 0 and 1")
+  }
+  if (!is.null(p) && any(0 > p | p > 1)) {
+    stop("proportion must be between 0 and 1")
+  }
+  alternative <- match.arg(alternative)
+  tside <- switch(alternative,
+    less = 1,
+    two.sided = 2,
+    greater = 3
   )
 
-  p <- ggplot2::ggplot() +
-    ggplot2::geom_ribbon(data = curves, ggplot2::aes(x = x, ymin = ymin, ymax = ymax, fill = group), color = "#333333", alpha = .6) +
-    ggplot2::geom_rect(data = rect, ggplot2::aes(xmin = x1, xmax = x2, ymin = y1, ymax = y2), fill = "white", alpha = 0.4) +
-    ggplot2::geom_vline(data = rect, ggplot2::aes(xintercept = x1), linetype = "dashed") +
-    ggplot2::geom_vline(data = rect, ggplot2::aes(xintercept = x2), linetype = "dashed") +
-    ggplot2::coord_cartesian(xlim = lims$xlim, ylim = lims$ylim, expand = FALSE) +
-    ggplot2::labs(x = gettextf("Observed effect size (%s)", es), y = gettext("Probability Density")) +
-    ggtheme +
-    themeSpec +
-    ggplot2::scale_fill_manual(values = ps$pal(5)[c(4, 1)])
+  if (tside == 2) {
+    p.body <- quote({
+      1 - pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) + qnorm(sig.level / 2, lower.tail = FALSE)) +
+        pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) - qnorm(sig.level / 2, lower.tail = FALSE))
+    })
+  }
+  if (tside == 3) {
+    p.body <- quote({
+      pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) - qnorm(sig.level, lower.tail = FALSE))
+    })
+  }
+  if (tside == 1) {
+    p.body <- quote({
+      1 - pnorm(2 * (asin(sqrt(p)) - asin(sqrt(p0))) * sqrt(n) + qnorm(sig.level, lower.tail = FALSE))
+    })
+  }
+  if (is.null(power)) {
+    power <- eval(p.body)
+  } else if (is.null(p)) {
+    if (tside == 3) {
+      p <- uniroot(function(p) eval(p.body) - power, c(p0, 1 - 1e-10))$root
+    }
+    if (tside == 1) {
+      p <- uniroot(function(p) eval(p.body) - power, c(1e-10, p0))$root
+    }
+    if (tside == 2) {
+      p_1 <- try(uniroot(function(p) eval(p.body) - power, c(p0, 1 - 1e-10))$root)
+      p_2 <- try(uniroot(function(p) eval(p.body) - power, c(1e-10, p0))$root)
+      if (inherits(p_1, "try-error") && inherits(p_2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(p_1, "try-error")) {
+          p <- c(NA, p_2)
+        } else if (inherits(p_2, "try-error")) {
+          p <- c(p_1, NA)
+        } else {
+          p <- c(p_1, p_2)
+        }
+      }
+    }
+  } else if (is.null(n)) {
+    n <- uniroot(function(n) eval(p.body) - power, c(1e-10, 1e+09))$root
+  } else if (is.null(sig.level)) {
+    sig.level <- uniroot(function(sig.level) eval(p.body) - power, c(1e-10, 1 - 1e-10))$root
+  } else {
+    stop("internal error")
+  }
+  METHOD <- "proportion power calculation for binomial distribution (arcsine transformation)"
+  structure(list(
+    p = p, n = n, sig.level = sig.level, power = power,
+    alternative = alternative, method = METHOD
+  ), class = "power.htest")
+}
 
-  return(p)
+pwr.2p2n.test <- function(p0 = NULL, p1 = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
+                          alternative = c("two.sided", "less", "greater")) {
+  if (sum(sapply(list(p1, n, n.ratio, power, sig.level), is.null)) !=
+    1) {
+    stop("exactly one of p1, n, n.ratio, power, and sig.level must be NULL")
+  }
+
+  if (!is.null(n) && n < 2) {
+    stop("number of observations in the first group must be at least 2")
+  }
+  if (!is.null(n.ratio) && n.ratio <= 0) {
+    stop("ratio between group sizes must be positive")
+  }
+  if (!is.null(sig.level) && (!is.numeric(sig.level) || any(0 > sig.level | sig.level > 1))) {
+    stop("sig.level must be between 0 and 1")
+  }
+  if (!is.null(power) && (!is.numeric(power) || any(0 > power | power > 1))) {
+    stop("power must be between 0 and 1")
+  }
+  if ((!is.null(p0) || !is.null(p1)) && (any(0 > p0 | p0 > 1) || any(0 > p1 | p1 > 1))) {
+    stop("proportions must be between 0 and 1")
+  }
+  alternative <- match.arg(alternative)
+  tside <- switch(alternative,
+    less = 1,
+    two.sided = 2,
+    greater = 3
+  )
+
+  if (tside == 3) {
+    p.body <- quote({
+      pnorm(qnorm(sig.level, lower = FALSE) - 2 * (asin(sqrt(p1)) - asin(sqrt(p0))) * sqrt((n * (n * n.ratio)) / (n + (n * n.ratio))), lower = FALSE)
+    })
+  }
+  if (tside == 1) {
+    p.body <- quote({
+      pnorm(qnorm(sig.level, lower = TRUE) - 2 * (asin(sqrt(p1)) - asin(sqrt(p0))) * sqrt((n * (n * n.ratio)) / (n + (n * n.ratio))), lower = TRUE)
+    })
+  }
+  if (tside == 2) {
+    p.body <- quote({
+      pnorm(qnorm(sig.level / 2, lower = FALSE) - 2 * abs(asin(sqrt(p1)) - asin(sqrt(p0))) * sqrt((n * (n * n.ratio)) / (n + (n * n.ratio))), lower = FALSE) +
+        pnorm(qnorm(sig.level / 2, lower = TRUE) - 2 * abs(asin(sqrt(p1)) - asin(sqrt(p0))) * sqrt((n * (n * n.ratio)) / (n + (n * n.ratio))), lower = TRUE)
+    })
+  }
+  if (is.null(power)) {
+    power <- eval(p.body)
+  } else if (is.null(p1)) {
+    if (tside == 2) {
+      p_1 <- try(uniroot(function(p1) eval(p.body) - power, c(p0, 1 - 1e-10))$root)
+      p_2 <- try(uniroot(function(p1) eval(p.body) - power, c(1e-10, p0))$root)
+      if (inherits(p_1, "try-error") && inherits(p_2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(p_1, "try-error")) {
+          p1 <- c(NA, p_2)
+        } else if (inherits(p_2, "try-error")) {
+          p1 <- c(p_1, NA)
+        } else {
+          p1 <- c(p_1, p_2)
+        }
+      }
+    } else {
+      p1 <- uniroot(function(p1) eval(p.body) - power, c(1e-10, 1 - 1e-10))$root
+    }
+  } else if (is.null(n)) {
+    if (n.ratio >= 1) {
+      n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
+    }
+    if (n.ratio < 1) {
+      n <- uniroot(function(n) eval(p.body) - power, c((2 / n.ratio), 1e+09))$root
+    }
+  } else if (is.null(n.ratio)) {
+    n.ratio <- uniroot(function(n.ratio) eval(p.body) - power, c(1e-10, 1e+09))$root
+  } else if (is.null(sig.level)) {
+    sig.level <- uniroot(function(sig.level) {
+      eval(p.body) -
+        power
+    }, c(1e-10, 1 - 1e-10))$root
+  } else {
+    stop("internal error")
+  }
+  NOTE <- "different sample sizes"
+  METHOD <- "difference of proportion power calculation for binomial distribution (arcsine transformation)"
+  structure(list(
+    p0 = p0, p1 = p1, n = n, n.ratio = n.ratio, sig.level = sig.level,
+    power = power, alternative = alternative, method = METHOD,
+    note = NOTE
+  ), class = "power.htest")
+}
+
+pwr.var.test <- function(rho = NULL, n = NULL, sig.level = 0.05, power = NULL,
+                         alternative = c("two.sided", "less", "greater")) {
+  if (sum(sapply(list(rho, n, power, sig.level), is.null)) !=
+    1) {
+    stop("exactly one of rho, n, power, and sig.level must be NULL")
+  }
+
+  if (!is.null(n) && n < 2) {
+    stop("number of observations in the first group must be at least 2")
+  }
+  if (!is.null(sig.level) && (!is.numeric(sig.level) || any(0 > sig.level | sig.level > 1))) {
+    stop("sig.level must be between 0 and 1")
+  }
+  if (!is.null(power) && (!is.numeric(power) || any(0 > power | power > 1))) {
+    stop("power must be between 0 and 1")
+  }
+  if (!is.null(rho) && 0 > rho) {
+    stop("rho must be positive")
+  }
+  alternative <- match.arg(alternative)
+  tside <- switch(alternative,
+    less = 1,
+    two.sided = 2,
+    greater = 3
+  )
+
+  if (tside == 3) {
+    p.body <- quote({
+      1 - pchisq(qchisq(sig.level, df = n - 1, lower.tail = FALSE) / rho, df = n - 1)
+    })
+  }
+  if (tside == 1) {
+    p.body <- quote({
+      pchisq(qchisq(sig.level, df = n - 1, lower.tail = TRUE) / rho, df = n - 1)
+    })
+  }
+  if (tside == 2) {
+    p.body <- quote({
+      1 - pchisq(qchisq(sig.level / 2, df = n - 1, lower.tail = FALSE) / rho, df = n - 1) +
+        pchisq(qchisq(sig.level / 2, df = n - 1, lower.tail = TRUE) / rho, df = n - 1)
+    })
+  }
+  if (is.null(power)) {
+    power <- eval(p.body)
+  } else if (is.null(rho)) {
+    if (tside == 2) {
+      rho1 <- try(uniroot(function(rho) eval(p.body) - power, c(1 + 1e-10, 1e+09))$root)
+      rho2 <- try(uniroot(function(rho) eval(p.body) - power, c(1e-10, 1 - 1e-10))$root)
+      if (inherits(rho1, "try-error") && inherits(rho2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(rho1, "try-error")) {
+          rho <- c(NA, rho2)
+        } else if (inherits(rho2, "try-error")) {
+          rho <- c(rho1, NA)
+        } else {
+          rho <- c(rho1, rho2)
+        }
+      }
+    }
+
+    if (tside == 1) {
+      rho <- uniroot(function(rho) eval(p.body) - power, c(1e-10, 1 - 1e-10))$root
+    }
+
+    if (tside == 3) {
+      rho <- uniroot(function(rho) eval(p.body) - power, c(1 + 1e-10, 1e+09))$root
+    }
+  } else if (is.null(n)) {
+    n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
+  } else if (is.null(sig.level)) {
+    sig.level <- uniroot(function(sig.level) {
+      eval(p.body) -
+        power
+    }, c(1e-10, 1 - 1e-10))$root
+  } else {
+    stop("internal error")
+  }
+  NOTE <- "one sample"
+  METHOD <- "variance ratio power calculation"
+  structure(list(
+    rho = rho, n = n, sig.level = sig.level,
+    power = power, alternative = alternative, method = METHOD,
+    note = NOTE
+  ), class = "power.htest")
+}
+
+pwr.2var2n.test <- function(rho = NULL, n = NULL, n.ratio = 1, sig.level = 0.05, power = NULL,
+                            alternative = c("two.sided", "less", "greater")) {
+  if (sum(sapply(list(rho, n, n.ratio, power, sig.level), is.null)) !=
+    1) {
+    stop("exactly one of rho, n, n.ratio, power, and sig.level must be NULL")
+  }
+
+  if (!is.null(n) && n < 2) {
+    stop("number of observations in the first group must be at least 2")
+  }
+  if (!is.null(n.ratio) && n.ratio <= 0) {
+    stop("ratio between group sizes must be positive")
+  }
+  if (!is.null(sig.level) && (!is.numeric(sig.level) || any(0 > sig.level | sig.level > 1))) {
+    stop("sig.level must be between 0 and 1")
+  }
+  if (!is.null(power) && (!is.numeric(power) || any(0 > power | power > 1))) {
+    stop("power must be between 0 and 1")
+  }
+  if (!is.null(rho) && 0 > rho) {
+    stop("rho must be positive")
+  }
+  alternative <- match.arg(alternative)
+  tside <- switch(alternative,
+    less = 1,
+    two.sided = 2,
+    greater = 3
+  )
+
+  if (tside == 3) {
+    p.body <- quote({
+      1 - pf(qf(1 - sig.level, df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1)
+    })
+  }
+
+  if (tside == 1) {
+    p.body <- quote({
+      pf(qf(sig.level, df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1)
+    })
+  }
+  if (tside == 2) {
+    p.body <- quote({
+      1 - pf(qf(1 - (sig.level / 2), df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1) +
+        pf(qf(sig.level / 2, df1 = n - 1, df2 = (n * n.ratio) - 1) / rho, df1 = n - 1, df2 = (n * n.ratio) - 1)
+    })
+  }
+  if (is.null(power)) {
+    power <- eval(p.body)
+  } else if (is.null(rho)) {
+    if (tside == 2) {
+      rho1 <- try(uniroot(function(rho) eval(p.body) - power, c(1 + 1e-10, 1e+09))$root)
+      rho2 <- try(uniroot(function(rho) eval(p.body) - power, c(1e-10, 1 - 1e-10))$root)
+      if (inherits(rho1, "try-error") && inherits(rho2, "try-error")) {
+        stop("no solution found")
+      } else {
+        if (inherits(rho1, "try-error")) {
+          rho <- c(NA, rho2)
+        } else if (inherits(rho2, "try-error")) {
+          rho <- c(rho1, NA)
+        } else {
+          rho <- c(rho1, rho2)
+        }
+      }
+    }
+    if (tside == 1) {
+      rho <- uniroot(function(rho) eval(p.body) - power, c(1e-10, 1 - 1e-10))$root
+    }
+
+    if (tside == 3) {
+      rho <- uniroot(function(rho) eval(p.body) - power, c(1 + 1e-10, 1e+09))$root
+    }
+  } else if (is.null(n)) {
+    if (n.ratio >= 1) {
+      n <- uniroot(function(n) eval(p.body) - power, c(2 + 1e-10, 1e+09))$root
+    }
+    if (n.ratio < 1) {
+      n <- uniroot(function(n) eval(p.body) - power, c((2 / n.ratio), 1e+09))$root
+    }
+  } else if (is.null(n.ratio)) {
+    n.ratio <- uniroot(function(n.ratio) eval(p.body) - power, c(1e-10, 1e+09))$root
+  } else if (is.null(sig.level)) {
+    sig.level <- uniroot(function(sig.level) {
+      eval(p.body) -
+        power
+    }, c(1e-10, 1 - 1e-10))$root
+  } else {
+    stop("internal error")
+  }
+  NOTE <- "different sample sizes"
+  METHOD <- "variance ratio power calculation"
+  structure(list(
+    rho = rho, n = n, n.ratio = n.ratio, sig.level = sig.level,
+    power = power, alternative = alternative, method = METHOD,
+    note = NOTE
+  ), class = "power.htest")
+}
+
+pwr.pois.test <- function(n = NULL, power = NULL, sig.level = 0.05,
+                          lambda1 = NULL, lambda0 = NULL, t = 1, alternative = c("two.sided", "less", "greater")) {
+  if (sum(sapply(list(n, lambda1, lambda0, power, sig.level), is.null)) != 1) {
+    stop("exactly one of n, lambda1, lambda0, power, and sig.level must be NULL")
+  }
+  if (!is.null(sig.level) && !is.numeric(sig.level) ||
+    any(0 > sig.level | sig.level > 1)) {
+    stop(sQuote("sig.level"), " must be numeric in [0, 1]")
+  }
+  if (!is.null(power) && !is.numeric(power) || any(0 >
+    power | power > 1)) {
+    stop(sQuote("power"), " must be numeric in [0, 1]")
+  }
+  alternative <- match.arg(alternative)
+  test.side <- switch(alternative,
+    less = 1,
+    two.sided = 2,
+    greater = 3
+  )
+
+  if (test.side == 3) {
+    p.body <- quote({
+      1 - pnorm((qnorm(sig.level, lower.tail = FALSE) * sqrt(lambda0 / (n * t)) + lambda0 - lambda1) / sqrt(lambda1 / (n * t)))
+    })
+  }
+  if (test.side == 1) {
+    p.body <- quote({
+      1 - pnorm((qnorm(sig.level, lower.tail = FALSE) * sqrt(lambda0 / (n * t)) + lambda1 - lambda0) / sqrt(lambda1 / (n * t)))
+    })
+  }
+  if (test.side == 2) {
+    p.body <- quote({
+      (1 - pnorm((qnorm(sig.level / 2, lower.tail = FALSE) * sqrt(lambda0 / (n * t)) + lambda0 - lambda1) / sqrt(lambda1 / (n * t)))) +
+        (1 - pnorm((qnorm(sig.level / 2, lower.tail = FALSE) * sqrt(lambda0 / (n * t)) + lambda1 - lambda0) / sqrt(lambda1 / (n * t))))
+    })
+  }
+
+  if (is.null(power)) {
+    power <- eval(p.body)
+  } else if (is.null(n)) {
+    n <- uniroot(function(n) eval(p.body) - power, c(2, 1e+07))$root
+  } else if (is.null(lambda1)) {
+    if (test.side == 2) {
+      lambda1 <- uniroot(function(lambda1) eval(p.body) - power, c(lambda0 + 1e-10, 1e+07))$root
+    } else {
+      lambda1 <- uniroot(function(lambda1) eval(p.body) - power, c(1e-10, 1e+07))$root
+    }
+  }
+
+  METHOD <- "One-sample Poisson Rate Test"
+  return(structure(list(
+    n = n, t = t, lambda1 = lambda1,
+    lambda0 = lambda0, sig.level = sig.level, power = power,
+    alternative = alternative, method = METHOD
+  ), class = "power.htest"))
+}
+
+pwr.2pois2n.test <- function(n1 = NULL, n.ratio = 1, power = NULL, sig.level = 0.05,
+                             lambda1 = NULL, lambda2 = NULL, t1 = 1, t2 = 1, alternative = c("two.sided", "less", "greater")) {
+  if (sum(sapply(list(n1, lambda1, lambda2, power, sig.level), is.null)) != 1) {
+    stop("exactly one of n1, lambda1, lambda2, power, and sig.level must be NULL")
+  }
+  if (!is.null(sig.level) && !is.numeric(sig.level) ||
+    any(0 > sig.level | sig.level > 1)) {
+    stop(sQuote("sig.level"), " must be numeric in [0, 1]")
+  }
+  if (!is.null(power) && !is.numeric(power) || any(0 >
+    power | power > 1)) {
+    stop(sQuote("power"), " must be numeric in [0, 1]")
+  }
+  alternative <- match.arg(alternative)
+  test.side <- switch(alternative,
+    less = 1,
+    two.sided = 2,
+    greater = 3
+  )
+
+  if (test.side == 1) {
+    p.body <- quote({
+      pnorm((lambda2 - lambda1) / sqrt(lambda1 / (n1 * t1) + lambda2 / (n1 * n.ratio * t2)) - qnorm(sig.level, lower.tail = FALSE))
+    })
+  }
+  if (test.side == 3) {
+    p.body <- quote({
+      1 - pnorm((lambda2 - lambda1) / sqrt(lambda1 / (n1 * t1) + lambda2 / (n1 * n.ratio * t2)) + qnorm(sig.level, lower.tail = FALSE))
+    })
+  }
+  if (test.side == 2) {
+    p.body <- quote({
+      1 - pnorm((lambda2 - lambda1) / sqrt(lambda1 / (n1 * t1) + lambda2 / (n1 * n.ratio * t2)) + qnorm(sig.level / 2, lower.tail = FALSE)) +
+        pnorm((lambda2 - lambda1) / sqrt(lambda1 / (n1 * t1) + lambda2 / (n1 * n.ratio * t2)) - qnorm(sig.level / 2, lower.tail = FALSE))
+    })
+  }
+
+  if (is.null(power)) {
+    power <- eval(p.body)
+  } else if (is.null(n1)) {
+    n1 <- uniroot(function(n1) eval(p.body) - power, c(2, 1e+07))$root
+  } else if (is.null(lambda1)) {
+    if (test.side == 2) {
+      lambda1 <- uniroot(function(lambda1) eval(p.body) - power, c(lambda2 + 1e-10, 1e+07))$root
+    } else {
+      lambda1 <- uniroot(function(lambda1) eval(p.body) - power, c(1e-10, 1e+07))$root
+    }
+  }
+
+
+  if (lambda1 * n1 < 30 || lambda2 * n1 * n.ratio < 30) {
+    if (test.side == 1) {
+      p.body <- quote({
+        pnorm((sqrt(lambda2) - sqrt(lambda1)) / (1 / 2 * sqrt(1 / (n1 * t1) + 1 / (n1 * n.ratio * t2))) - qnorm(sig.level, lower.tail = FALSE))
+      })
+    }
+    if (test.side == 3) {
+      p.body <- quote({
+        1 - pnorm((sqrt(lambda2) - sqrt(lambda1)) / (1 / 2 * sqrt(1 / (n1 * t1) + 1 / (n1 * n.ratio * t2))) + qnorm(sig.level, lower.tail = FALSE))
+      })
+    }
+    if (test.side == 2) {
+      p.body <- quote({
+        1 - pnorm((sqrt(lambda2) - sqrt(lambda1)) / (1 / 2 * sqrt(1 / (n1 * t1) + 1 / (n1 * n.ratio * t2))) + qnorm(sig.level / 2, lower.tail = FALSE)) +
+          pnorm((sqrt(lambda2) - sqrt(lambda1)) / (1 / 2 * sqrt(1 / (n1 * t1) + 1 / (n1 * n.ratio * t2))) - qnorm(sig.level / 2, lower.tail = FALSE))
+      })
+    }
+
+    if (is.null(power)) {
+      power <- eval(p.body)
+    } else if (is.null(n1)) {
+      n1 <- uniroot(function(n1) eval(p.body) - power, c(2, 1e+07))$root
+    } else if (is.null(lambda1)) {
+      if (test.side == 2) {
+        lambda1 <- uniroot(function(lambda1) eval(p.body) - power, c(lambda2 + 1e-10, 1e+07))$root
+      } else {
+        lambda1 <- uniroot(function(lambda1) eval(p.body) - power, c(1e-10, 1e+07))$root
+      }
+    }
+  }
+
+  METHOD <- "Two-sample Poisson Ratio Tests (Different Sizes)"
+  return(structure(list(
+    n1 = n1, n.ratio = n.ratio, t1 = t1, t2 = t2, lambda1 = lambda1,
+    lambda2 = lambda2, sig.level = sig.level, power = power,
+    alternative = alternative, method = METHOD
+  ), class = "power.htest"))
+}
+# Convenience function to draw segment lines
+.segment <- function(...) {
+  return(ggplot2::annotate(
+    geom = "segment",
+    size = 1,
+    linetype = "dashed",
+    ...
+  ))
 }

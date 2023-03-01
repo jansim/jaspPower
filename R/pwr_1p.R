@@ -543,7 +543,7 @@
     )
   )
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   if (alt == "less" || (alt == "two.sided" && p1 < p0)) {
     ps$maxd <- abs(2 * (asin(sqrt(min(0.0001, p1))) - asin(sqrt(p0))))
@@ -617,7 +617,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 .preparePowerCurveESTest1P <- function(jaspResults, options, r, lst) {
@@ -661,7 +661,7 @@
     )
   )
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   if (alt == "less" || (alt == "two.sided" && p1 < p0)) {
     ps$maxd <- abs(2 * (asin(sqrt(min(0.00001, p1))) - asin(sqrt(p0))))
@@ -696,7 +696,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n = n, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 .preparePowerCurveNTest1P <- function(jaspResults, options, r, lst) {
@@ -743,7 +743,7 @@
   )
 
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
   if (alt == "less" || (alt == "two.sided" && p1 < p0)) {
     ps$maxd <- abs(2 * (asin(sqrt(min(0.01, p1))) - asin(sqrt(p0))))
   } else {
@@ -797,7 +797,7 @@
     alpha = alpha,
     pow = power
   )
-  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 .preparePowerDistTest1P <- function(jaspResults, options, r, lst) {
@@ -888,7 +888,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims)
-  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 

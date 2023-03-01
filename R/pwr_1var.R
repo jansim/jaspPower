@@ -562,7 +562,7 @@
     )
   )
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   maxn <- try(ceiling(pwr.var.test(
     rho = d, power = max(0.99, power), sig.level = alpha, alternative = alt
@@ -626,7 +626,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 .preparePowerCurveESTest1Var <- function(jaspResults, options, r, lst) {
@@ -667,7 +667,7 @@
     )
   )
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   maxd <- try(pwr.var.test(n = n, power = max(0.999, power), sig.level = alpha, alternative = alt)$rho)
   if (inherits(maxd, "try-error")) {
@@ -698,7 +698,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n = n, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 .preparePowerCurveNTest1Var <- function(jaspResults, options, r, lst) {
@@ -728,7 +728,7 @@
 
   calc <- options$calculation
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   n <- ifelse(calc == "sampleSize", r$n, lst$n)
   if (calc == "effectSize") d <- ifelse(options$alternative == "twoSided", ifelse(options$effectDirection == "greater", r$es[1], r$es[2]), r$es) else d <- lst$es
@@ -788,7 +788,7 @@
     alpha = alpha,
     pow = power
   )
-  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 .preparePowerDistTest1Var <- function(jaspResults, options, r, lst) {
@@ -887,7 +887,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims)
-  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 

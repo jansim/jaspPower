@@ -330,7 +330,7 @@
     jaspResults[["powerContour"]] <- image
   }
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   calc <- options$calculation
 
@@ -424,7 +424,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .populateContourTextTtestIS <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["contourText"]]
@@ -464,7 +464,7 @@
     jaspResults[["powerCurveES"]] <- image
   }
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   calc <- options$calculation
 
@@ -497,7 +497,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n1 = n1, n2 = n2, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .populatePowerCurveESTextTtestIS <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveESText"]]
@@ -579,7 +579,7 @@
 
   calc <- options$calculation
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   n1 <- ifelse(calc == "sampleSize", r$n1, lst$n1)
   n2 <- ifelse(calc == "sampleSize", r$n2, lst$n2)
@@ -636,7 +636,7 @@
   )
 
   state <- list(n = n1, cols = cols, nn = nn, y = y, yrect = yrect, lims = lims, delta = d, alpha = alpha, n_ratio = n_ratio, pow = power)
-  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .preparePowerDistTtestIS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
@@ -715,7 +715,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims)
-  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .populatePowerCurveNTextTtestIS <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveNText"]]

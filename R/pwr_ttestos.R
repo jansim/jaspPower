@@ -481,7 +481,7 @@
     jaspResults[["powerContour"]] <- image
   }
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   calc <- options$calculation
   n <- ifelse(calc == "sampleSize", r$n, lst$n)
@@ -553,7 +553,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .preparePowerCurveESTtestOneS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveES"]]
@@ -578,7 +578,7 @@
     jaspResults[["powerCurveES"]] <- image
   }
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   calc <- options$calculation
   n <- ifelse(calc == "sampleSize", r$n, lst$n)
@@ -609,7 +609,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n = n, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .preparePowerCurveNTtestOneS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerCurveN"]]
@@ -636,7 +636,7 @@
 
   calc <- options$calculation
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   n <- ifelse(calc == "sampleSize", r$n, lst$n)
   d <- ifelse(calc == "effectSize", r$es, lst$es)
@@ -694,7 +694,7 @@
     alpha = alpha,
     pow = power
   )
-  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .preparePowerDistTtestOneS <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
@@ -781,7 +781,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims)
-  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = .pwrPlotTheme())
 }
 
 #### Generate synthetic dataset ----

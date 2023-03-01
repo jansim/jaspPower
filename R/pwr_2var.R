@@ -377,7 +377,7 @@
     )
   )
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   maxn <- try(ceiling(pwr.2var2n.test(
     n.ratio = n_ratio,
@@ -458,7 +458,7 @@
     minn = minn,
     maxn = maxn
   )
-  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerContour(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .populateContourTextTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["contourText"]]
@@ -515,7 +515,7 @@
     )
   )
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   maxd <- try(pwr.2var2n.test(n = n1, n.ratio = n_ratio, power = max(0.99, power), sig.level = alpha, alternative = alt)$rho)
   if (inherits(maxd, "try-error")) {
@@ -546,7 +546,7 @@
   yrect <- seq(0, 1, 1 / ps$pow.n.levels)
 
   state <- list(cols = cols, dd = dd, y = y, yrect = yrect, n1 = n1, n2 = n2, alpha = alpha, delta = d, pow = power)
-  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveES(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .populatePowerCurveESTextTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveESText"]]
@@ -668,7 +668,7 @@
     )
   )
 
-  ps <- ttestPlotSettings
+  ps <- .pwrPlotDefaultSettings
 
   maxn <- try(ceiling(pwr.2var2n.test(
     n.ratio = n_ratio,
@@ -713,7 +713,7 @@
   )
 
   state <- list(n = n1, cols = cols, nn = nn, y = y, yrect = yrect, lims = lims, delta = d, alpha = alpha, n_ratio = n_ratio, pow = power)
-  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerCurveN(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .preparePowerDistTest2Var <- function(jaspResults, options, r, lst) {
   image <- jaspResults[["powerDist"]]
@@ -820,7 +820,7 @@
   )
 
   state <- list(curves = curves, rect = rect, lims = lims, d = d_copy)
-  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = pwr_plot_theme())
+  image$plotObject <- .plotPowerDist(options, state = state, ggtheme = .pwrPlotTheme())
 }
 .populatePowerCurveNTextTest2Var <- function(jaspResults, options, r, lst) {
   html <- jaspResults[["curveNText"]]
