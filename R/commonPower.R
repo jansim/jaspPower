@@ -159,7 +159,7 @@
 }
 
 # ==== Plotting Functions ====
-.powerContour <- function(options, state, ggtheme, ...) {
+.plotPowerContour <- function(options, state, ggtheme, ...) {
   calc <- options$calculation
 
   z.delta <- state$z.delta
@@ -250,7 +250,7 @@
   return(p)
 }
 
-.powerCurveES <- function(options, state, ggtheme, ...) {
+.plotPowerCurveES <- function(options, state, ggtheme, ...) {
   y <- state$y
   cols <- state$cols
   yrect <- state$yrect
@@ -317,7 +317,7 @@
   return(p)
 }
 
-.powerCurveN <- function(options, state, ggtheme, ...) {
+.plotPowerCurveN <- function(options, state, ggtheme, ...) {
   cols <- state$cols
   yrect <- state$yrect
   lims <- state$lims
@@ -382,7 +382,7 @@
   return(p)
 }
 
-.powerDist <- function(options, state, ggtheme, ...) {
+.plotPowerDist <- function(options, state, ggtheme, ...) {
   if (options$test == "independentSamplesTTest" || options$test == "pairedSamplesTTest" ||
     options$test == "oneSampleTTest" || options$test == "oneSampleZTest") {
     es <- "|\u03B4|"
